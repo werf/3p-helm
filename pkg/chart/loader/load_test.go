@@ -38,7 +38,7 @@ func TestLoadDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -57,7 +57,7 @@ func TestLoadDirWithDevNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	if _, err := l.Load(); err == nil {
+	if _, err := l.Load(*GlobalLoadOptions); err == nil {
 		t.Errorf("packages with an irregular file (/dev/null) should not load")
 	}
 }
@@ -77,7 +77,7 @@ func TestLoadDirWithSymlink(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -140,7 +140,7 @@ func TestLoadDirWithUTFBOM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -156,7 +156,7 @@ func TestLoadArchiveWithUTFBOM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -172,7 +172,7 @@ func TestLoadV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -185,7 +185,7 @@ func TestLoadFileV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -198,7 +198,7 @@ func TestLoadFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -223,7 +223,7 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
 	} {
-		_, err := LoadFiles(tt.bufferedFiles)
+		_, err := LoadFiles(tt.bufferedFiles, *GlobalLoadOptions)
 		if err == nil {
 			t.Fatal("expected error when load illegal files")
 		}
@@ -274,7 +274,7 @@ icon: https://example.com/64x64.png
 		},
 	}
 
-	c, err := LoadFiles(goodFiles)
+	c, err := LoadFiles(goodFiles, *GlobalLoadOptions)
 	if err != nil {
 		t.Errorf("Expected good files to be loaded, got %v", err)
 	}
@@ -299,7 +299,7 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	if _, err = LoadFiles([]*BufferedFile{}); err == nil {
+	if _, err = LoadFiles([]*BufferedFile{}, *GlobalLoadOptions); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
 	if err.Error() != "Chart.yaml file is missing" {
@@ -363,7 +363,7 @@ icon: https://example.com/64x64.png
 		log.SetOutput(stderr)
 	}()
 
-	_, err = LoadFiles(goodFiles)
+	_, err = LoadFiles(goodFiles, *GlobalLoadOptions)
 	if err != nil {
 		t.Errorf("Expected good files to be loaded, got %v", err)
 	}
@@ -394,7 +394,7 @@ func TestLoadV2WithReqs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load()
+	c, err := l.Load(*GlobalLoadOptions)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}

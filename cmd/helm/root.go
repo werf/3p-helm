@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "helm.sh/helm/v3/cmd/helm"
+package helm_v3 // import "helm.sh/helm/v3/cmd/helm"
 
 import (
 	"context"
@@ -182,7 +182,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newInstallCmd(actionConfig, out),
 		newListCmd(actionConfig, out),
 		newReleaseTestCmd(actionConfig, out),
-		newRollbackCmd(actionConfig, out),
+		newRollBackCmd(actionConfig, out),
 		newStatusCmd(actionConfig, out),
 		newTemplateCmd(actionConfig, out),
 		newUninstallCmd(actionConfig, out),

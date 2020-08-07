@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -24,12 +25,29 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+type UpdateOptions struct {
+	Force                        bool
+	SkipDeleteIfInvalidOwnership bool
+	ReleaseName                  string // Required if SkipDeleteIfInvalidOwnership == true
+	ReleaseNamespace             string // Required if SkipDeleteIfInvalidOwnership == true
+}
+
+type DeleteOptions struct {
+	Wait                   bool
+	WaitTimeout            time.Duration
+	SkipIfInvalidOwnership bool
+	ReleaseName            string // Required if SkipIfInvalidOwnership == true
+	ReleaseNamespace       string // Required if SkipIfInvalidOwnership == true
+}
+
 // Interface represents a client capable of communicating with the Kubernetes API.
 //
 // A KubernetesClient must be concurrency safe.
 type Interface interface {
 	// Create creates one or more resources.
 	Create(resources ResourceList) (*Result, error)
+	// Create creates one or more resources with resource existance check.
+	CreateIfNotExists(resources ResourceList) (*Result, error)
 
 	// Wait waits up to the given timeout for the specified resources to be ready.
 	Wait(resources ResourceList, timeout time.Duration) error
@@ -38,7 +56,8 @@ type Interface interface {
 	WaitWithJobs(resources ResourceList, timeout time.Duration) error
 
 	// Delete destroys one or more resources.
-	Delete(resources ResourceList) (*Result, []error)
+	Delete(resources ResourceList, opts DeleteOptions) (*Result, []error)
+	DeleteNamespace(ctx context.Context, namespace string, opts DeleteOptions) error
 
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//
@@ -53,7 +72,7 @@ type Interface interface {
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
+	Update(original, target ResourceList, opts UpdateOptions) (*Result, error)
 
 	// Build creates a resource list from a Reader.
 	//

@@ -48,6 +48,11 @@ func (p *PrintingKubeClient) Create(resources kube.ResourceList) (*kube.Result, 
 	return &kube.Result{Created: resources}, nil
 }
 
+// Create prints the values of what would be created with a real KubeClient.
+func (p *PrintingKubeClient) CreateIfNotExists(resources kube.ResourceList) (*kube.Result, error) {
+	return p.Create(resources)
+}
+
 func (p *PrintingKubeClient) Get(resources kube.ResourceList, related bool) (map[string][]runtime.Object, error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
@@ -74,7 +79,7 @@ func (p *PrintingKubeClient) WaitForDelete(resources kube.ResourceList, _ time.D
 // Delete implements KubeClient delete.
 //
 // It only prints out the content to be deleted.
-func (p *PrintingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (p *PrintingKubeClient) Delete(resources kube.ResourceList, opts kube.DeleteOptions) (*kube.Result, []error) {
 	_, err := io.Copy(p.Out, bufferize(resources))
 	if err != nil {
 		return nil, []error{err}
@@ -89,7 +94,7 @@ func (p *PrintingKubeClient) WatchUntilReady(resources kube.ResourceList, _ time
 }
 
 // Update implements KubeClient Update.
-func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ bool) (*kube.Result, error) {
+func (p *PrintingKubeClient) Update(_, modified kube.ResourceList, _ kube.UpdateOptions) (*kube.Result, error) {
 	_, err := io.Copy(p.Out, bufferize(modified))
 	if err != nil {
 		return nil, err

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package helm_v3
 
 import (
 	"fmt"
@@ -23,9 +23,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/errs"
+	"helm.sh/helm/v3/pkg/phases"
 )
 
 const rollbackDesc = `
@@ -38,8 +39,21 @@ roll back to the previous release.
 To see revision numbers, run 'helm history RELEASE'.
 `
 
-func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewRollback(cfg)
+type RollbackCmdOptions struct {
+	StagesSplitter phases.Splitter
+	CleanupOnFail  *bool
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+	DeployReportPath *string
+}
+
+func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	cmd := NewRollbackCmd(cfg, out, RollbackCmdOptions{})
+	return cmd
+}
+
+func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOptions) *cobra.Command {
+	client := action.NewRollback(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 
 	cmd := &cobra.Command{
 		Use:   "rollback <RELEASE> [REVISION]",
@@ -58,6 +72,13 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.CleanupOnFail != nil {
+				client.CleanupOnFail = *opts.CleanupOnFail
+			}
+			if opts.DeployReportPath != nil {
+				client.DeployReportPath = *opts.DeployReportPath
+			}
+
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
 				if err != nil {
@@ -67,7 +88,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			}
 
 			if err := client.Run(args[0]); err != nil {
-				return err
+				return errs.FormatTemplatingError(err)
 			}
 
 			fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")
@@ -85,6 +106,7 @@ func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback fails")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
+	f.StringVar(&client.DeployReportPath, "deploy-report-path", "", "save deploy report in JSON to the specified path")
 
 	return cmd
 }

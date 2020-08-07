@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package helm_v3
 
 import (
 	"context"
@@ -35,7 +35,10 @@ import (
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/errs"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
@@ -68,7 +71,36 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewUpgrade(cfg)
+	cmd, _ := NewUpgradeCmd(cfg, out, UpgradeCmdOptions{})
+	return cmd
+}
+
+type UpgradeCmdOptions struct {
+	StagesSplitter    phases.Splitter
+	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
+	ValueOpts         *values.Options
+	CreateNamespace   *bool
+	Install           *bool
+	Wait              *bool
+	Atomic            *bool
+	Timeout           *time.Duration
+	IgnorePending     *bool
+	CleanupOnFail     *bool
+	DeployReportPath *string
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+}
+
+func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {
+	upgradeOpts := action.UpgradeOptions{
+		StagesSplitter:              opts.StagesSplitter,
+		StagesExternalDepsGenerator: opts.StagesExternalDepsGenerator,
+	}
+	if opts.IgnorePending != nil {
+		upgradeOpts.IgnorePending = *opts.IgnorePending
+	}
+
+	client := action.NewUpgrade(cfg, upgradeOpts)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
@@ -88,6 +120,37 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.ChainPostRenderer != nil {
+				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
+			}
+			if opts.ValueOpts != nil {
+				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)
+				valueOpts.StringValues = append(valueOpts.StringValues, opts.ValueOpts.StringValues...)
+				valueOpts.Values = append(valueOpts.Values, opts.ValueOpts.Values...)
+				valueOpts.FileValues = append(valueOpts.FileValues, opts.ValueOpts.FileValues...)
+			}
+			if opts.CreateNamespace != nil {
+				createNamespace = *opts.CreateNamespace
+			}
+			if opts.Install != nil {
+				client.Install = *opts.Install
+			}
+			if opts.Wait != nil {
+				client.Wait = *opts.Wait
+			}
+			if opts.Atomic != nil {
+				client.Atomic = *opts.Atomic
+			}
+			if opts.Timeout != nil {
+				client.Timeout = *opts.Timeout
+			}
+			if opts.CleanupOnFail != nil {
+				client.CleanupOnFail = *opts.CleanupOnFail
+			}
+			if opts.DeployReportPath != nil {
+				client.DeployReportPath = *opts.DeployReportPath
+			}
+
 			client.Namespace = settings.Namespace()
 
 			// Fixes #7002 - Support reading values from STDIN for `upgrade` command
@@ -101,7 +164,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
-					instClient := action.NewInstall(cfg)
+					instClient := action.NewInstall(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.Force = client.Force
@@ -120,10 +183,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					instClient.Description = client.Description
 					instClient.DependencyUpdate = client.DependencyUpdate
 					instClient.EnableDNS = client.EnableDNS
+					instClient.CleanupOnFail = client.CleanupOnFail
+					instClient.DeployReportPath = client.DeployReportPath
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
-						return err
+						return errs.FormatTemplatingError(err)
 					}
 					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false})
 				} else if err != nil {
@@ -136,13 +201,26 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				client.Version = ">0.0.0-0"
 			}
 
-			chartPath, err := client.ChartPathOptions.LocateChart(args[1], settings)
-			if err != nil {
+			var chartPath string
+			var err error
+			if loader.GlobalLoadOptions.ChartExtender != nil {
+				if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(args[1], settings); err != nil {
+					return err
+				} else if isLocated {
+					chartPath = path
+				} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
+					return err
+				} else {
+					chartPath = path
+				}
+			} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
 				return err
+			} else {
+				chartPath = path
 			}
 
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p)
+			vals, err := valueOpts.MergeValues(p, loader.GlobalLoadOptions.ChartExtender)
 			if err != nil {
 				return err
 			}
@@ -200,7 +278,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
-				return errors.Wrap(err, "UPGRADE FAILED")
+				return errors.Wrap(errs.FormatTemplatingError(err), "UPGRADE FAILED")
 			}
 
 			if outfmt == output.Table {
@@ -234,6 +312,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
 	f.BoolVar(&client.EnableDNS, "enable-dns", false, "enable DNS lookups when rendering templates")
+	f.StringVar(&client.DeployReportPath, "deploy-report-path", "", "save deploy report in JSON to the specified path")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)
@@ -250,5 +329,5 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		log.Fatal(err)
 	}
 
-	return cmd
+	return cmd, client
 }

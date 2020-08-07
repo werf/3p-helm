@@ -31,12 +31,12 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
@@ -74,6 +75,9 @@ type Client struct {
 	Namespace string
 
 	kubeClient *kubernetes.Clientset
+
+	ResourcesWaiter ResourcesWaiter
+	Extender        ClientExtender
 }
 
 var addToScheme sync.Once
@@ -128,13 +132,27 @@ func (c *Client) IsReachable() error {
 	return nil
 }
 
+func (c *Client) CreateIfNotExists(resources ResourceList) (*Result, error) {
+	if c.Extender != nil {
+		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
+			return &Result{}, err
+		}
+	}
+
+	c.Log("creating %d resource(s)", len(resources))
+	return performWithResult(resources, createResourceIfNotExists)
+}
+
 // Create creates Kubernetes resources specified in the resource list.
 func (c *Client) Create(resources ResourceList) (*Result, error) {
-	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, createResource); err != nil {
-		return nil, err
+	if c.Extender != nil {
+		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
+			return &Result{}, err
+		}
 	}
-	return &Result{Created: resources}, nil
+
+	c.Log("creating %d resource(s)", len(resources))
+	return performWithResult(resources, createResource)
 }
 
 func transformRequests(req *rest.Request) {
@@ -274,6 +292,10 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
+	if c.ResourcesWaiter != nil {
+		return c.ResourcesWaiter.Wait(context.Background(), resources, timeout)
+	}
+
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
@@ -389,7 +411,7 @@ func (c *Client) BuildTable(reader io.Reader, validate bool) (ResourceList, erro
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, opts UpdateOptions) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -405,13 +427,17 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 				return errors.Wrap(err, "could not get information about the resource")
 			}
 
-			// Append the created resource to the results, even if something fails
-			res.Created = append(res.Created, info)
-
+			if c.Extender != nil {
+				if err := c.Extender.BeforeCreateResource(info); err != nil {
+					return err
+				}
+			}
 			// Since the resource does not exist, create it.
-			if err := createResource(info); err != nil {
+			if _, err := createResource(info); err != nil {
 				return errors.Wrap(err, "failed to create resource")
 			}
+
+			res.Created = append(res.Created, info)
 
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
@@ -424,12 +450,18 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			return errors.Errorf("no %s with the name %q found", kind, info.Name)
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if c.Extender != nil {
+			if err := c.Extender.BeforeUpdateResource(info); err != nil {
+				return err
+			}
+		}
+
+		if err := updateResource(c, info, originalInfo.Object, opts.Force); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
+		} else {
+			res.Updated = append(res.Updated, info)
 		}
-		// Because we check for errors later, append the info regardless
-		res.Updated = append(res.Updated, info)
 
 		return nil
 	})
@@ -448,6 +480,12 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Unable to get obj %q, err: %s", info.Name, err)
 			continue
 		}
+
+		if err := releaseutil.CheckOwnership(info.Object, opts.ReleaseName, opts.ReleaseNamespace); err != nil {
+			c.Log("Skipping delete of %q due to unmatched ownership annotations: %s", info.Name, err)
+			continue
+		}
+
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
 			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
@@ -456,6 +494,13 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Skipping delete of %q due to annotation [%s=%s]", info.Name, ResourcePolicyAnno, KeepPolicy)
 			continue
 		}
+
+		if c.Extender != nil {
+			if err := c.Extender.BeforeDeleteResource(info); err != nil {
+				return res, err
+			}
+		}
+
 		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
 			continue
@@ -469,11 +514,33 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 // attempt to delete all resources even if one or more fail and collect any
 // errors. All successfully deleted items will be returned in the `Deleted`
 // ResourceList that is part of the result.
-func (c *Client) Delete(resources ResourceList) (*Result, []error) {
+func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []error) {
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
+		if opts.SkipIfInvalidOwnership {
+			if err := info.Get(); err != nil {
+				c.Log("Skipping delete of %q due to inability to get the object from cluster: %s", info.Name, err)
+				return nil
+			}
+
+			if err := releaseutil.CheckOwnership(info.Object, opts.ReleaseName, opts.ReleaseNamespace); err != nil {
+				c.Log("Skipping delete of %q due to unmatched ownership annotations: %s", info.Name, err)
+				return nil
+			}
+		}
+
+		if c.Extender != nil {
+			if err := c.Extender.BeforeDeleteResource(info); err != nil {
+				mtx.Lock()
+				defer mtx.Unlock()
+				// Collect the error and continue on
+				errs = append(errs, err)
+				return nil
+			}
+		}
+
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
 		err := deleteResource(info)
 		if err == nil || apierrors.IsNotFound(err) {
@@ -500,8 +567,24 @@ func (c *Client) Delete(resources ResourceList) (*Result, []error) {
 		errs = append(errs, err)
 	}
 	if errs != nil {
-		return nil, errs
+		return res, errs
 	}
+
+	if opts.Wait {
+		var specs []*ResourcesWaiterDeleteResourceSpec
+		for _, resource := range res.Deleted {
+			specs = append(specs, &ResourcesWaiterDeleteResourceSpec{
+				ResourceName:         resource.Name,
+				Namespace:            resource.Namespace,
+				GroupVersionResource: resource.Mapping.Resource,
+			})
+		}
+
+		if err := c.ResourcesWaiter.WaitUntilDeleted(context.Background(), specs, opts.WaitTimeout); err != nil {
+			return res, []error{fmt.Errorf("waiting until resources are deleted failed: %s", err)}
+		}
+	}
+
 	return res, nil
 }
 
@@ -526,6 +609,10 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
+	if c.ResourcesWaiter != nil {
+		return c.ResourcesWaiter.WatchUntilReady(context.Background(), resources, timeout)
+	}
+
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(resources, c.watchTimeout(timeout))
@@ -546,6 +633,92 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 		}
 	}
 	return nil
+}
+
+type performResourceStatus int
+
+const (
+	resourceStatusUnknown performResourceStatus = iota
+	resourceStatusCreated
+	resourceStatusUpdated
+	resourceStatusDeleted
+)
+
+func performWithResult(infos ResourceList, fn func(*resource.Info) (performResourceStatus, error)) (*Result, error) {
+	if len(infos) == 0 {
+		return &Result{}, ErrNoObjectsVisited
+	}
+
+	infosByGK := groupInfosByGK(infos)
+
+	type performResult struct {
+		resource *resource.Info
+		status   performResourceStatus
+		error    error
+	}
+
+	result := &Result{}
+
+	for _, resList := range infosByGK {
+		performResultsCh := make(chan performResult, len(resList))
+		for _, res := range resList {
+			resC := res
+			go func() {
+				status, err := fn(resC)
+				performResultsCh <- performResult{
+					resource: resC,
+					status:   status,
+					error:    err,
+				}
+			}()
+		}
+
+		var errs []error
+		for range resList {
+			perfRes := <-performResultsCh
+
+			if perfRes.error != nil {
+				errs = append(errs, perfRes.error)
+				continue
+			}
+
+			switch perfRes.status {
+			case resourceStatusUnknown:
+			case resourceStatusCreated:
+				result.Created = append(result.Created, perfRes.resource)
+			case resourceStatusUpdated:
+				result.Updated = append(result.Updated, perfRes.resource)
+			case resourceStatusDeleted:
+				result.Deleted = append(result.Deleted, perfRes.resource)
+			default:
+				panic("unexpected status")
+			}
+		}
+
+		if len(errs) > 0 {
+			return result, errs[0]
+		}
+	}
+
+	return result, nil
+}
+
+func groupInfosByGK(infos ResourceList) []ResourceList {
+	var infosByGK []ResourceList
+	var lastGK schema.GroupKind
+	for _, info := range infos {
+		currentGK := info.Object.GetObjectKind().GroupVersionKind().GroupKind()
+		if lastGK == currentGK {
+			infosByGK[len(infosByGK)-1].Append(info)
+		} else {
+			rl := ResourceList{}
+			rl.Append(info)
+			infosByGK = append(infosByGK, rl)
+			lastGK = currentGK
+		}
+	}
+
+	return infosByGK
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
@@ -585,12 +758,24 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
-func createResource(info *resource.Info) error {
+func createResource(info *resource.Info) (performResourceStatus, error) {
 	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
-		return err
+		return resourceStatusUnknown, err
 	}
-	return info.Refresh(obj, true)
+
+	return resourceStatusCreated, info.Refresh(obj, true)
+}
+
+func createResourceIfNotExists(info *resource.Info) (performResourceStatus, error) {
+	_, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+	if apierrors.IsNotFound(err) {
+		return createResource(info)
+	} else if err != nil {
+		return resourceStatusUnknown, err
+	}
+
+	return resourceStatusUnknown, nil
 }
 
 func deleteResource(info *resource.Info) error {

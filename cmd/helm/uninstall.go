@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package helm_v3
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/phases"
 )
 
 const uninstallDesc = `
@@ -38,7 +38,19 @@ uninstalling them.
 `
 
 func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewUninstall(cfg)
+	return NewUninstallCmd(cfg, out, UninstallCmdOptions{})
+}
+
+type UninstallCmdOptions struct {
+	StagesSplitter  phases.Splitter
+	DeleteNamespace *bool
+	DeleteHooks     *bool
+
+	DontFailIfNoRelease *bool
+}
+
+func NewUninstallCmd(cfg *action.Configuration, out io.Writer, opts UninstallCmdOptions) *cobra.Command {
+	client := action.NewUninstall(cfg, opts.StagesSplitter)
 
 	cmd := &cobra.Command{
 		Use:        "uninstall RELEASE_NAME [...]",
@@ -51,6 +63,18 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListReleases(toComplete, args, cfg)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.DeleteHooks != nil {
+				client.DeleteHooks = *opts.DeleteHooks
+			}
+			if opts.DeleteNamespace != nil {
+				client.DeleteNamespace = *opts.DeleteNamespace
+			}
+			if opts.DontFailIfNoRelease != nil {
+				client.DontFailIfNoRelease = *opts.DontFailIfNoRelease
+			}
+
+			client.Namespace = Settings.Namespace()
+
 			for i := 0; i < len(args); i++ {
 
 				res, err := client.Run(args[i])
@@ -61,7 +85,7 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					fmt.Fprintln(out, res.Info)
 				}
 
-				fmt.Fprintf(out, "release \"%s\" uninstalled\n", args[i])
+				fmt.Fprintf(out, "release \"%s\" successfully uninstalled\n", args[i])
 			}
 			return nil
 		},

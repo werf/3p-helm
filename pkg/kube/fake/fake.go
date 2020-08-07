@@ -88,11 +88,11 @@ func (f *FailingKubeClient) WaitForDelete(resources kube.ResourceList, d time.Du
 }
 
 // Delete returns the configured error if set or prints
-func (f *FailingKubeClient) Delete(resources kube.ResourceList) (*kube.Result, []error) {
+func (f *FailingKubeClient) Delete(resources kube.ResourceList, opts kube.DeleteOptions) (*kube.Result, []error) {
 	if f.DeleteError != nil {
 		return nil, []error{f.DeleteError}
 	}
-	return f.PrintingKubeClient.Delete(resources)
+	return f.PrintingKubeClient.Delete(resources, opts)
 }
 
 // WatchUntilReady returns the configured error if set or prints
@@ -104,7 +104,7 @@ func (f *FailingKubeClient) WatchUntilReady(resources kube.ResourceList, d time.
 }
 
 // Update returns the configured error if set or prints
-func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe bool) (*kube.Result, error) {
+func (f *FailingKubeClient) Update(r, modified kube.ResourceList, ignoreMe kube.UpdateOptions) (*kube.Result, error) {
 	if f.UpdateError != nil {
 		return &kube.Result{}, f.UpdateError
 	}

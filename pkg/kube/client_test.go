@@ -167,7 +167,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := c.Update(first, second, false)
+	result, err := c.Update(first, second, UpdateOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +368,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, errs := c.Delete(resources); errs != nil {
+	if _, errs := c.Delete(resources, DeleteOptions{}); errs != nil {
 		t.Fatal(errs)
 	}
 
@@ -377,7 +377,7 @@ func TestReal(t *testing.T) {
 		t.Fatal(err)
 	}
 	// ensures that delete does not fail if a resource is not found
-	if _, errs := c.Delete(resources); errs != nil {
+	if _, errs := c.Delete(resources, DeleteOptions{}); errs != nil {
 		t.Fatal(errs)
 	}
 }

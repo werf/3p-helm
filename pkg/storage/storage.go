@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	rspb "helm.sh/helm/v3/pkg/release"
 	relutil "helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -156,6 +155,25 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
 }
 
+func (s *Storage) HistoryUntilRevision(name string, ignoreSinceRevision int) ([]*rspb.Release, error) {
+	history, err := s.History(name)
+	if err != nil {
+		return nil, fmt.Errorf("error getting release history: %w", err)
+	}
+
+	relutil.SortByRevision(history)
+
+	resultLength := len(history)
+	for i, release := range history {
+		if release.Version == ignoreSinceRevision {
+			resultLength = i
+			break
+		}
+	}
+
+	return history[:resultLength], nil
+}
+
 // removeLeastRecent removes items from history until the length number of releases
 // does not exceed max.
 //
@@ -183,15 +201,16 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 
 	var toDelete []*rspb.Release
 	for _, rel := range h {
+		if lastDeployed == nil {
+			break
+		}
+
 		// once we have enough releases to delete to reach the max, stop
 		if len(h)-len(toDelete) == max {
 			break
 		}
-		if lastDeployed != nil {
-			if rel.Version != lastDeployed.Version {
-				toDelete = append(toDelete, rel)
-			}
-		} else {
+
+		if rel.Version < lastDeployed.Version {
 			toDelete = append(toDelete, rel)
 		}
 	}

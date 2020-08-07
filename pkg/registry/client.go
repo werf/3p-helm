@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,6 +55,7 @@ type (
 	// Client works with OCI-compliant registries
 	Client struct {
 		debug       bool
+		insecure    bool
 		enableCache bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
@@ -90,6 +92,17 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.insecure {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+			opts = append(opts, func(settings *auth.ResolverSettings) {
+				settings.Client.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+			})
+		}
+
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -136,6 +149,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 
 	}
 	return client, nil
+}
+
+// ClientOptDebug returns a function that sets the insecure setting on client options set
+func ClientOptInsecure(insecure bool) ClientOption {
+	return func(client *Client) {
+		client.insecure = insecure
+	}
 }
 
 // ClientOptDebug returns a function that sets the debug setting on client options set

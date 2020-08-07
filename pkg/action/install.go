@@ -32,6 +32,9 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/phases/phasemanagers"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,6 +93,7 @@ type Install struct {
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
 	IncludeCRDs              bool
+	CleanupOnFail            bool
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
@@ -103,8 +107,13 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	StagesSplitter phases.Splitter
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	DeployReportPath string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -127,9 +136,20 @@ type ChartPathOptions struct {
 }
 
 // NewInstall creates a new Install object with the given configuration.
-func NewInstall(cfg *Configuration) *Install {
+func NewInstall(cfg *Configuration, stagesSplitter phases.Splitter, stagesExternalDepsGenerator phases.ExternalDepsGenerator) *Install {
+	if stagesSplitter == nil {
+		stagesSplitter = &phases.SingleStageSplitter{}
+	}
+
+	if stagesExternalDepsGenerator == nil {
+		stagesExternalDepsGenerator = &phases.NoExternalDepsGenerator{}
+	}
+
 	in := &Install{
-		cfg: cfg,
+		cfg:            cfg,
+		StagesSplitter: stagesSplitter,
+
+		StagesExternalDepsGenerator: stagesExternalDepsGenerator,
 	}
 	in.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -201,7 +221,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chrt, vals); err != nil {
+	if err := chartutil.ProcessDependencies(chrt, &vals); err != nil {
 		return nil, err
 	}
 
@@ -258,6 +278,21 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 
 	rel := i.createRelease(chrt, vals)
 
+	if !i.DryRun && i.DeployReportPath != "" {
+		defer func() {
+			deployReportData, err := release.NewDeployReport().FromRelease(rel).ToJSONData()
+			if err != nil {
+				i.cfg.Log("warning: error creating deploy report data: %s", err)
+				return
+			}
+
+			if err := os.WriteFile(i.DeployReportPath, deployReportData, 0o644); err != nil {
+				i.cfg.Log("warning: error writing deploy report file: %s", err)
+				return
+			}
+		}()
+	}
+
 	var manifestDoc *bytes.Buffer
 	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun, i.EnableDNS)
 	// Even for errors, attach this if available
@@ -274,14 +309,14 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
-	var toBeAdopted kube.ResourceList
+	toBeAdopted := kube.ResourceList{}
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
 	}
 
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
-	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	err = resources.Visit(releaseutil.SetMetadataVisitor(rel.Name, rel.Namespace, true))
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +328,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// deleting the release because the manifest will be pointing at that
 	// resource
 	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
-		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+		toBeAdopted, err = ExistingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
@@ -326,7 +361,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.CreateIfNotExists(resourceList); err != nil {
 			return nil, err
 		}
 	}
@@ -361,43 +396,104 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
+			i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("failed pre-install: %s", err))
 			return
 		}
 	}
 
-	// At this point, we can do the install. Note that before we were detecting whether to
-	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
-	// to true, since that is basically an upgrade operation.
-	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-			i.reportToRun(c, rel, err)
-			return
-		}
-	} else if len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, i.Force); err != nil {
-			i.reportToRun(c, rel, err)
-			return
-		}
+	history, err := i.cfg.Releases.HistoryUntilRevision(rel.Name, rel.Version)
+	if err != nil {
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error getting release history: %w", err))
+		return
 	}
 
-	if i.Wait {
-		if i.WaitForJobs {
-			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
-				i.reportToRun(c, rel, err)
-				return
+	rolloutPhase, err := phases.NewRolloutPhase(rel, i.StagesSplitter, i.cfg.KubeClient).
+		ParseStages(resources)
+	if err != nil {
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error parsing stages for rollout phase: %w", err))
+		return
+	}
+
+	if err := rolloutPhase.GenerateStagesExternalDeps(i.StagesExternalDepsGenerator); err != nil {
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error generating external deps for rollout phase: %w", err))
+		return
+	}
+
+	deployedResourcesCalculator := phases.NewDeployedResourcesCalculator(history, i.StagesSplitter, i.cfg.KubeClient)
+
+	rolloutPhaseManager, err := phasemanagers.NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, rel, i.cfg.Releases, i.cfg.KubeClient).
+		AddPreviouslyDeployedResources(toBeAdopted).
+		AddCalculatedPreviouslyDeployedResources()
+	if err != nil {
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error calculating previously deployed resources for rollout phase manager: %w", err))
+		return
+	}
+
+	if err := rolloutPhaseManager.DoStage(
+		func(stgIndex int, stage *stages.Stage) error {
+			if len(stage.ExternalDependencies) == 0 || !i.Wait {
+				return nil
 			}
-		} else {
-			if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
-				i.reportToRun(c, rel, err)
-				return
+
+			if i.WaitForJobs {
+				return i.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), i.Timeout)
+			} else {
+				return i.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), i.Timeout)
 			}
+		},
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			// At this point, we can do the install. Note that before we were detecting whether to
+			// do an update, but it's not clear whether we WANT to do an update if the re-use is set
+			// to true, since that is basically an upgrade operation.
+			if len(prevDeployedStgResources) == 0 && len(stage.DesiredResources) > 0 {
+				stage.Result, err = i.cfg.KubeClient.Create(stage.DesiredResources)
+				if err != nil {
+					return err
+				}
+			} else if len(stage.DesiredResources) > 0 {
+				stage.Result, err = i.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, kube.UpdateOptions{
+					SkipDeleteIfInvalidOwnership: true,
+					ReleaseName:                  rel.Name,
+					ReleaseNamespace:             rel.Namespace,
+					Force: i.Force,
+				})
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		},
+		func(stgIndex int, stage *stages.Stage) error {
+			if !i.Wait {
+				return nil
+			}
+
+			if i.WaitForJobs {
+				return i.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, i.Timeout)
+			} else {
+				return i.cfg.KubeClient.Wait(stage.DesiredResources, i.Timeout)
+			}
+		},
+	); err != nil {
+		createdResourcesToDelete := kube.ResourceList{}
+		var applyErr *phasemanagers.ApplyError
+		if errors.As(err, &applyErr) {
+			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[applyErr.StageIndex].Result.Created
 		}
+
+		i.reportToRun(c, rel, createdResourcesToDelete, fmt.Errorf("error processing rollout phase stage: %w", err))
+
+		return
+	}
+
+	if err := rolloutPhaseManager.DeleteOrphanedResources(); err != nil {
+		i.cfg.Log("failure removing resources no longer present in the release: %w", err)
 	}
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+			i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("failed post-install: %s", err))
 			return
 		}
 	}
@@ -419,30 +515,48 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		i.cfg.Log("failed to record the release: %s", err)
 	}
 
-	i.reportToRun(c, rel, nil)
+	i.reportToRun(c, rel, kube.ResourceList{}, nil)
 }
 func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, done chan struct{}, rel *release.Release) {
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
-		i.reportToRun(c, rel, err)
+		i.reportToRun(c, rel, kube.ResourceList{}, err)
 	case <-done:
 		return
 	}
 }
-func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {
+func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, createdToCleanup kube.ResourceList, err error) {
 	i.Lock.Lock()
 	if err != nil {
-		rel, err = i.failRelease(rel, err)
+		rel, err = i.failRelease(rel, createdToCleanup, err)
 	}
 	c <- resultMessage{r: rel, e: err}
 	i.Lock.Unlock()
 }
-func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
+func (i *Install) failRelease(rel *release.Release, createdToCleanup kube.ResourceList, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
+	if i.CleanupOnFail && len(createdToCleanup) > 0 {
+		i.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(createdToCleanup))
+		_, errs := i.cfg.KubeClient.Delete(createdToCleanup, kube.DeleteOptions{
+			Wait:                   true,
+			WaitTimeout:            i.Timeout,
+			SkipIfInvalidOwnership: true,
+			ReleaseName:            rel.Name,
+			ReleaseNamespace:       rel.Namespace,
+		})
+		if errs != nil {
+			var errorList []string
+			for _, e := range errs {
+				errorList = append(errorList, e.Error())
+			}
+			return rel, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original install error: %s", err)
+		}
+		i.cfg.Log("Resource cleanup complete")
+	}
 	if i.Atomic {
 		i.cfg.Log("Install failed and atomic is set, uninstalling release")
-		uninstall := NewUninstall(i.cfg)
+		uninstall := NewUninstall(i.cfg, i.StagesSplitter)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
@@ -489,7 +603,7 @@ func (i *Install) availableName() error {
 // createRelease creates a new release object
 func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}) *release.Release {
 	ts := i.cfg.Now()
-	return &release.Release{
+	return release.SetInitPhaseStageInfo(&release.Release{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Chart:     chrt,
@@ -500,7 +614,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			Status:        release.StatusUnknown,
 		},
 		Version: 1,
-	}
+	})
 }
 
 // recordRelease with an update operation in case reuse has been set.

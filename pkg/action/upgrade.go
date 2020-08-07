@@ -20,11 +20,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/phases/phasemanagers"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -105,6 +109,13 @@ type Upgrade struct {
 	Lock sync.Mutex
 	// Enable DNS lookups when rendering templates
 	EnableDNS bool
+
+	DeployReportPath string
+
+	StagesSplitter              phases.Splitter
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	IgnorePending bool
 }
 
 type resultMessage struct {
@@ -112,10 +123,31 @@ type resultMessage struct {
 	e error
 }
 
+type UpgradeOptions struct {
+	StagesSplitter              phases.Splitter
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	IgnorePending bool
+}
+
 // NewUpgrade creates a new Upgrade object with the given configuration.
-func NewUpgrade(cfg *Configuration) *Upgrade {
+func NewUpgrade(cfg *Configuration, opts UpgradeOptions) *Upgrade {
+	stagesSplitter := opts.StagesSplitter
+	if stagesSplitter == nil {
+		stagesSplitter = &phases.SingleStageSplitter{}
+	}
+
+	stagesExternalDepsGenerator := opts.StagesExternalDepsGenerator
+	if stagesExternalDepsGenerator == nil {
+		stagesExternalDepsGenerator = &phases.NoExternalDepsGenerator{}
+	}
+
 	up := &Upgrade{
 		cfg: cfg,
+
+		StagesSplitter:              stagesSplitter,
+		StagesExternalDepsGenerator: stagesExternalDepsGenerator,
+		IgnorePending:               opts.IgnorePending,
 	}
 	up.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -145,6 +177,21 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
 		return nil, err
+	}
+
+	if !u.DryRun && u.DeployReportPath != "" {
+		defer func() {
+			deployReportData, err := release.NewDeployReport().FromRelease(upgradedRelease).ToJSONData()
+			if err != nil {
+				u.cfg.Log("warning: error creating deploy report data: %s", err)
+				return
+			}
+
+			if err := os.WriteFile(u.DeployReportPath, deployReportData, 0o644); err != nil {
+				u.cfg.Log("warning: error writing deploy report file: %s", err)
+				return
+			}
+		}()
 	}
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory
@@ -182,9 +229,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
-	if lastRelease.Info.Status.IsPending() {
+	if !u.IgnorePending && lastRelease.Info.Status.IsPending() {
 		return nil, nil, errPending
 	}
+
+	isUpgrade := true
 
 	var currentRelease *release.Release
 	if lastRelease.Info.Status == release.StatusDeployed {
@@ -194,8 +243,11 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		// finds the deployed release with the given name
 		currentRelease, err = u.cfg.Releases.Deployed(name)
 		if err != nil {
-			if errors.Is(err, driver.ErrNoDeployedReleases) &&
-				(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded) {
+			if errors.Is(err, driver.ErrNoDeployedReleases) && lastRelease.Info.Status != release.StatusUnknown {
+				switch lastRelease.Info.Status {
+				case release.StatusUninstalling, release.StatusUninstalled, release.StatusPendingInstall:
+					isUpgrade = false
+				}
 				currentRelease = lastRelease
 			} else {
 				return nil, nil, err
@@ -209,7 +261,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		return nil, nil, err
 	}
 
-	if err := chartutil.ProcessDependencies(chart, vals); err != nil {
+	if err := chartutil.ProcessDependencies(chart, &vals); err != nil {
 		return nil, nil, err
 	}
 
@@ -221,7 +273,8 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Revision:  revision,
-		IsUpgrade: true,
+		IsInstall: !isUpgrade,
+		IsUpgrade: isUpgrade,
 	}
 
 	caps, err := u.cfg.getCapabilities()
@@ -239,7 +292,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 
 	// Store an upgraded release.
-	upgradedRelease := &release.Release{
+	upgradedRelease := release.SetInitPhaseStageInfo(&release.Release{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Chart:     chart,
@@ -253,7 +306,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 		Version:  revision,
 		Manifest: manifestDoc.String(),
 		Hooks:    hooks,
-	}
+	})
 
 	if len(notesTxt) > 0 {
 		upgradedRelease.Info.Notes = notesTxt
@@ -270,7 +323,8 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
 			return upgradedRelease, errors.Wrap(err, "current release manifest contains removed kubernetes api(s) for this "+
 				"kubernetes version and it is therefore unable to build the kubernetes "+
-				"objects for performing the diff. error from kubernetes")
+				"objects for performing the diff. error from kubernetes; "+fmt.Sprintf("unable to load original manifests:\n%s\n---\nupgraded release manifests:\n%s\n---\nPlease report to https://github.com/werf/werf/issues if this error have occured for an actual api version", originalRelease.Manifest, upgradedRelease.Manifest))
+
 		}
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
@@ -280,7 +334,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 
 	// It is safe to use force only on target because these are resources currently rendered by the chart.
-	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
+	err = target.Visit(releaseutil.SetMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
 	if err != nil {
 		return upgradedRelease, err
 	}
@@ -291,25 +345,17 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		existingResources[objectKey(r)] = true
 	}
 
-	var toBeCreated kube.ResourceList
+	toBeCreated := kube.ResourceList{}
 	for _, r := range target {
 		if !existingResources[objectKey(r)] {
 			toBeCreated = append(toBeCreated, r)
 		}
 	}
 
-	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	toBeAdopted, err := ExistingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
 	if err != nil {
 		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
-
-	toBeUpdated.Visit(func(r *resource.Info, err error) error {
-		if err != nil {
-			return err
-		}
-		current.Append(r)
-		return nil
-	})
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
@@ -329,7 +375,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+	go u.releasingUpgrade(rChan, upgradedRelease, toBeAdopted, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {
 	case result := <-rChan:
@@ -363,7 +409,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, toBeAdopted kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -375,46 +421,113 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+	history, err := u.cfg.Releases.HistoryUntilRevision(upgradedRelease.Name, upgradedRelease.Version)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error getting release history: %w", err))
 		return
 	}
 
-	if u.Recreate {
-		// NOTE: Because this is not critical for a release to succeed, we just
-		// log if an error occurs and continue onward. If we ever introduce log
-		// levels, we should make these error level logs so users are notified
-		// that they'll need to go do the cleanup on their own
-		if err := recreate(u.cfg, results.Updated); err != nil {
-			u.cfg.Log(err.Error())
-		}
+	rolloutPhase, err := phases.NewRolloutPhase(upgradedRelease, u.StagesSplitter, u.cfg.KubeClient).
+		ParseStages(target)
+	if err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error parsing stages for rollout phase: %w", err))
+		return
 	}
 
-	if u.Wait {
-		u.cfg.Log(
-			"waiting for release %s resources (created: %d updated: %d  deleted: %d)",
-			upgradedRelease.Name, len(results.Created), len(results.Updated), len(results.Deleted))
-		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
+	if err := rolloutPhase.GenerateStagesExternalDeps(u.StagesExternalDepsGenerator); err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error generating external deps for rollout phase: %w", err))
+		return
+	}
+
+	deployedResourcesCalculator := phases.NewDeployedResourcesCalculator(history, u.StagesSplitter, u.cfg.KubeClient)
+
+	rolloutPhaseManager, err := phasemanagers.NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, upgradedRelease, u.cfg.Releases, u.cfg.KubeClient).
+		AddPreviouslyDeployedResources(toBeAdopted).
+		AddCalculatedPreviouslyDeployedResources()
+	if err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error calculating previously deployed resources for rollout phase manager: %w", err))
+		return
+	}
+
+	if err := rolloutPhaseManager.DoStage(
+		func(stgIndex int, stage *stages.Stage) error {
+			if len(stage.ExternalDependencies) == 0 || !u.Wait {
+				return nil
 			}
-		} else {
-			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
+
+			if u.WaitForJobs {
+				return u.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), u.Timeout)
+			} else {
+				return u.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), u.Timeout)
 			}
+		},
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			if len(prevDeployedStgResources) == 0 {
+				stage.Result, err = u.cfg.KubeClient.Create(stage.DesiredResources)
+				if err != nil {
+					return err
+				}
+			} else {
+				stage.Result, err = u.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, kube.UpdateOptions{
+					Force:                        u.Force,
+					SkipDeleteIfInvalidOwnership: true,
+					ReleaseName:                  upgradedRelease.Name,
+					ReleaseNamespace:             upgradedRelease.Namespace,
+				})
+				if err != nil {
+					return err
+				}
+			}
+
+			if u.Recreate {
+				// NOTE: Because this is not critical for a release to succeed, we just
+				// log if an error occurs and continue onward. If we ever introduce log
+				// levels, we should make these error level logs so users are notified
+				// that they'll need to go do the cleanup on their own
+				if err := recreate(u.cfg, stage.Result.Updated); err != nil {
+					u.cfg.Log(err.Error())
+				}
+			}
+
+			return nil
+		},
+		func(stgIndex int, stage *stages.Stage) error {
+			if !u.Wait {
+				return nil
+			}
+
+			if u.WaitForJobs {
+				return u.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, u.Timeout)
+			} else {
+				return u.cfg.KubeClient.Wait(stage.DesiredResources, u.Timeout)
+			}
+		},
+	); err != nil {
+		u.cfg.recordRelease(originalRelease)
+
+		createdResourcesToDelete := kube.ResourceList{}
+		var applyErr *phasemanagers.ApplyError
+		if errors.As(err, &applyErr) {
+			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[applyErr.StageIndex].Result.Created
 		}
+
+		u.reportToPerformUpgrade(c, upgradedRelease, createdResourcesToDelete, fmt.Errorf("error processing rollout phase stage: %w", err))
+
+		return
+	}
+
+	if err := rolloutPhaseManager.DeleteOrphanedResources(); err != nil {
+		u.cfg.Log("failure removing resources no longer present in the release: %w", err)
 	}
 
 	// post-upgrade hooks
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPostUpgrade, u.Timeout); err != nil {
-			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, fmt.Errorf("post-upgrade hooks failed: %s", err))
+			u.reportToPerformUpgrade(c, upgradedRelease, rolloutPhaseManager.Phase.SortedStages.MergedCreatedResources(), fmt.Errorf("post-upgrade hooks failed: %s", err))
 			return
 		}
 	}
@@ -440,7 +553,13 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
 		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created)
+		_, errs := u.cfg.KubeClient.Delete(created, kube.DeleteOptions{
+			Wait:                   true,
+			WaitTimeout:            u.Timeout,
+			SkipIfInvalidOwnership: true,
+			ReleaseName:            rel.Name,
+			ReleaseNamespace:       rel.Namespace,
+		})
 		if errs != nil {
 			var errorList []string
 			for _, e := range errs {
@@ -473,7 +592,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		releaseutil.Reverse(filteredHistory, releaseutil.SortByRevision)
 
-		rollin := NewRollback(u.cfg)
+		rollin := NewRollback(u.cfg, u.StagesSplitter, u.StagesExternalDepsGenerator)
 		rollin.Version = filteredHistory[0].Version
 		rollin.Wait = true
 		rollin.WaitForJobs = u.WaitForJobs
@@ -481,6 +600,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 		rollin.Recreate = u.Recreate
 		rollin.Force = u.Force
 		rollin.Timeout = u.Timeout
+		rollin.CleanupOnFail = u.CleanupOnFail
 		if rollErr := rollin.Run(rel.Name); rollErr != nil {
 			return rel, errors.Wrapf(rollErr, "an error occurred while rolling back the release. original upgrade error: %s", err)
 		}

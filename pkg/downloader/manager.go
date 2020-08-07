@@ -76,6 +76,9 @@ type Manager struct {
 	RegistryClient   *registry.Client
 	RepositoryConfig string
 	RepositoryCache  string
+
+	// AllowMissingRepos allows usage of dependency build without adding repos
+	AllowMissingRepos bool
 }
 
 // Build rebuilds a local charts directory from a lockfile.
@@ -111,8 +114,12 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	if _, err := m.resolveRepoNames(req); err != nil {
+	if repoNames, err := m.resolveRepoNames(req); err != nil {
 		return err
+	} else if m.AllowMissingRepos {
+		if _, err := m.ensureMissingRepos(repoNames, req); err != nil {
+			return fmt.Errorf("unable to ensure missing repos: %w", err)
+		}
 	}
 
 	if sum, err := resolver.HashReq(req, lock.Dependencies); err != nil || sum != lock.Digest {
@@ -129,9 +136,11 @@ func (m *Manager) Build() error {
 		}
 	}
 
-	// Check that all of the repos we're dependent on actually exist.
-	if err := m.hasAllRepos(lock.Dependencies); err != nil {
-		return err
+	if !m.AllowMissingRepos {
+		// Check that all of the repos we're dependent on actually exist.
+		if err := m.hasAllRepos(lock.Dependencies); err != nil {
+			return err
+		}
 	}
 
 	if !m.SkipUpdate {

@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package helm_v3
 
 import (
 	"io"
 	"log"
 
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/errs"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -56,7 +57,7 @@ func newGetAllCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				data := map[string]interface{}{
 					"Release": res,
 				}
-				return tpl(template, data, out)
+				return errs.FormatTemplatingError(tpl(template, data, out))
 			}
 
 			return output.Table.Write(out, &statusPrinter{res, true, false, false})

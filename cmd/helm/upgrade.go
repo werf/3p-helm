@@ -36,6 +36,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
@@ -67,6 +68,21 @@ set for a key called 'foo', the 'newbar' value would take precedence:
 `
 
 func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	cmd, _ := NewUpgradeCmd(cfg, out, UpgradeCmdOptions{})
+	return cmd
+}
+
+type UpgradeCmdOptions struct {
+	PostRenderer    postrender.PostRenderer
+	ValueOpts       *values.Options
+	CreateNamespace *bool
+	Install         *bool
+	Wait            *bool
+	Atomic          *bool
+	Timeout         *time.Duration
+}
+
+func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {
 	client := action.NewUpgrade(cfg)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
@@ -89,6 +105,30 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkOCI(args[1]); err != nil {
 				return err
+			}
+			if opts.PostRenderer != nil {
+				client.PostRenderer = opts.PostRenderer
+			}
+			if opts.ValueOpts != nil {
+				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)
+				valueOpts.StringValues = append(valueOpts.StringValues, opts.ValueOpts.StringValues...)
+				valueOpts.Values = append(valueOpts.Values, opts.ValueOpts.Values...)
+				valueOpts.FileValues = append(valueOpts.FileValues, opts.ValueOpts.FileValues...)
+			}
+			if opts.CreateNamespace != nil {
+				createNamespace = *opts.CreateNamespace
+			}
+			if opts.Install != nil {
+				client.Install = *opts.Install
+			}
+			if opts.Wait != nil {
+				client.Wait = *opts.Wait
+			}
+			if opts.Atomic != nil {
+				client.Atomic = *opts.Atomic
+			}
+			if opts.Timeout != nil {
+				client.Timeout = *opts.Timeout
 			}
 
 			client.Namespace = settings.Namespace()
@@ -246,5 +286,5 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 		log.Fatal(err)
 	}
 
-	return cmd
+	return cmd, client
 }

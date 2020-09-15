@@ -229,15 +229,23 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 		return nil, err
 	}
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
-	if err != nil {
-		return nil, err
+	var cp string
+	if loader.GlobalLoadOptions.LocateChartFunc != nil {
+		cp, err = loader.GlobalLoadOptions.LocateChartFunc(chart, settings)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		cp, err = client.ChartPathOptions.LocateChart(chart, settings)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	debug("CHART PATH: %s\n", cp)
 
 	p := getter.All(settings)
-	vals, err := valueOpts.MergeValues(p)
+	vals, err := valueOpts.MergeValues(p, loader.GlobalLoadOptions.ReadFileFunc)
 	if err != nil {
 		return nil, err
 	}

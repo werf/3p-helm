@@ -43,6 +43,14 @@ func concatPrefix(a, b string) string {
 //	- A chart has access to all of the variables for it, as well as all of
 //		the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
+	if chrt.ChartExtender != nil {
+		if newVals, err := chrt.ChartExtender.MakeValues(vals); err != nil {
+			return vals, err
+		} else {
+			vals = newVals
+		}
+	}
+
 	v, err := copystructure.Copy(vals)
 	if err != nil {
 		return vals, err

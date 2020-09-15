@@ -13,22 +13,25 @@ var (
 	NewHistoryCmd    = newHistoryCmd
 	NewLintCmd       = newLintCmd
 	NewListCmd       = newListCmd
-	NewTemplateCmd   = newTemplateCmd
 	NewRepoCmd       = newRepoCmd
 	NewRollbackCmd   = newRollbackCmd
+	NewCreateCmd     = newCreateCmd
+	NewEnvCmd        = newEnvCmd
+	NewPackageCmd    = newPackageCmd
+	NewPluginCmd     = newPluginCmd
+	NewPullCmd       = newPullCmd
+	NewSearchCmd     = newSearchCmd
+	NewStatusCmd     = newStatusCmd
+	NewTestCmd       = newReleaseTestCmd
+	NewVerifyCmd     = newVerifyCmd
+	NewVersionCmd    = newVersionCmd
+	NewChartCmd      = newChartCmd
+	NewShowCmd       = newShowCmd
+
+	// NOTE: following commands has additional options param and defined in corresponding command files
+	//NewTemplateCmd   = newTemplateCmd
 	//NewInstallCmd    = newInstallCmd
 	//NewUpgradeCmd    = newUpgradeCmd
-	NewCreateCmd  = newCreateCmd
-	NewEnvCmd     = newEnvCmd
-	NewPackageCmd = newPackageCmd
-	NewPluginCmd  = newPluginCmd
-	NewPullCmd    = newPullCmd
-	NewSearchCmd  = newSearchCmd
-	NewShowCmd    = newShowCmd
-	NewStatusCmd  = newStatusCmd
-	NewTestCmd    = newReleaseTestCmd
-	NewVerifyCmd  = newVerifyCmd
-	NewVersionCmd = newVersionCmd
 
 	LoadPlugins = loadPlugins
 )

@@ -7,7 +7,6 @@ var (
 	Debug                = debug
 	NewRootCmd           = newRootCmd
 
-	NewUninstallCmd  = newUninstallCmd
 	NewDependencyCmd = newDependencyCmd
 	NewGetCmd        = newGetCmd
 	NewHistoryCmd    = newHistoryCmd
@@ -32,6 +31,7 @@ var (
 	//NewTemplateCmd   = newTemplateCmd
 	//NewInstallCmd    = newInstallCmd
 	//NewUpgradeCmd    = newUpgradeCmd
+	//NewUninstallCmd  = newUninstallCmd
 
 	LoadPlugins = loadPlugins
 )

@@ -17,6 +17,7 @@ limitations under the License.
 package kube
 
 import (
+	"context"
 	"io"
 	"time"
 
@@ -43,6 +44,7 @@ type Interface interface {
 
 	// Delete destroys one or more resources.
 	Delete(resources ResourceList, opts DeleteOptions) (*Result, []error)
+	DeleteNamespace(ctx context.Context, namespace string, opts DeleteOptions) error
 
 	// WatchUntilReady watches the resources given and waits until it is ready.
 	//

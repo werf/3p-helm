@@ -24,7 +24,17 @@ import (
 	"net/http"
 	"strings"
 
+	"os"
+	"path/filepath"
+
 	"github.com/containerd/containerd/remotes"
+
+	"github.com/docker/cli/cli/config"
+	"github.com/docker/docker/pkg/homedir"
+
+	auth "github.com/deislabs/oras/pkg/auth/docker"
+	"github.com/deislabs/oras/pkg/content"
+	"github.com/deislabs/oras/pkg/oras"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"oras.land/oras-go/pkg/auth"
@@ -53,6 +63,15 @@ type (
 	ClientOption func(*Client)
 )
 
+func getDefaultDockerConfigPath() string {
+	configDir := os.Getenv("DOCKER_CONFIG")
+	if configDir == "" {
+		return filepath.Join(homedir.Get(), ".docker", config.ConfigFileName)
+	} else {
+		return filepath.Join(configDir, config.ConfigFileName)
+	}
+}
+
 // NewClient returns a new registry client with config
 func NewClient(options ...ClientOption) (*Client, error) {
 	client := &Client{
@@ -65,7 +84,7 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		client.credentialsFile = helmpath.ConfigPath(CredentialsFileBasename)
 	}
 	if client.authorizer == nil {
-		authClient, err := dockerauth.NewClient(client.credentialsFile)
+		authClient, err := dockerauth.NewClient(client.credentialsFile, getDefaultDockerConfigPath())
 		if err != nil {
 			return nil, err
 		}

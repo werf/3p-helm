@@ -17,6 +17,7 @@ limitations under the License.
 package registry // import "helm.sh/helm/v3/internal/experimental/registry"
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,9 +33,6 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/docker/pkg/homedir"
 
-	auth "github.com/deislabs/oras/pkg/auth/docker"
-	"github.com/deislabs/oras/pkg/content"
-	"github.com/deislabs/oras/pkg/oras"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"oras.land/oras-go/pkg/auth"
@@ -50,7 +48,8 @@ import (
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
-		debug bool
+		debug    bool
+		insecure bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile string
 		out             io.Writer
@@ -94,6 +93,17 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.insecure {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+			opts = append(opts, func(settings *auth.ResolverSettings) {
+				settings.Client.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+			})
+		}
+
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err

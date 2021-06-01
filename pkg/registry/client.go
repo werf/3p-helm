@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,7 +28,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+
 	"github.com/containerd/containerd/remotes"
+
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"oras.land/oras-go/pkg/auth"
@@ -53,7 +56,8 @@ a plus (+) when pulling from a registry.`
 type (
 	// Client works with OCI-compliant registries
 	Client struct {
-		debug bool
+		debug    bool
+		insecure bool
 		// path to repository config file e.g. ~/.docker/config.json
 		credentialsFile    string
 		out                io.Writer
@@ -89,6 +93,17 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		headers := http.Header{}
 		headers.Set("User-Agent", version.GetUserAgent())
 		opts := []auth.ResolverOption{auth.WithResolverHeaders(headers)}
+		if client.insecure {
+			opts = append(opts, auth.WithResolverPlainHTTP())
+			opts = append(opts, func(settings *auth.ResolverSettings) {
+				settings.Client.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+			})
+		}
+
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err
@@ -116,10 +131,8 @@ func NewClient(options ...ClientOption) (*Client, error) {
 					Username: username,
 					Password: password,
 				}, nil
-
 			},
 		}
-
 	}
 	return client, nil
 }
@@ -622,5 +635,4 @@ func (c *Client) Tags(ref string) ([]string, error) {
 	}
 
 	return tags, nil
-
 }

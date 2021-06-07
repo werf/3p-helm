@@ -323,7 +323,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.CreateIfNotExists(resourceList); err != nil {
 			return nil, err
 		}
 	}

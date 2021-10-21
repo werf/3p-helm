@@ -18,16 +18,11 @@ var (
 	NewEnvCmd        = newEnvCmd
 	NewPackageCmd    = newPackageCmd
 	NewPluginCmd     = newPluginCmd
-	NewPullCmd       = newPullCmd
 	NewSearchCmd     = newSearchCmd
 	NewStatusCmd     = newStatusCmd
 	NewTestCmd       = newReleaseTestCmd
 	NewVerifyCmd     = newVerifyCmd
 	NewVersionCmd    = newVersionCmd
-	NewChartCmd      = newChartCmd
-	NewChartSaveCmd  = newChartSaveCmd
-	NewChartPushCmd  = newChartPushCmd
-	NewChartPullCmd  = newChartPullCmd
 	NewShowCmd       = newShowCmd
 	NewRegistryCmd   = newRegistryCmd
 
@@ -36,7 +31,8 @@ var (
 	// NewInstallCmd    = newInstallCmd
 	// NewUpgradeCmd    = newUpgradeCmd
 	// NewUninstallCmd  = newUninstallCmd
-	// NewChartExportCmd = newChartExportCmd
+	NewPullCmd = newPullCmd
+	NewPushCmd = newPushCmd
 
 	LoadPlugins = loadPlugins
 )

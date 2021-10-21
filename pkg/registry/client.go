@@ -137,6 +137,13 @@ func NewClient(options ...ClientOption) (*Client, error) {
 	return client, nil
 }
 
+// ClientOptDebug returns a function that sets the insecure setting on client options set
+func ClientOptInsecure(insecure bool) ClientOption {
+	return func(client *Client) {
+		client.insecure = insecure
+	}
+}
+
 // ClientOptDebug returns a function that sets the debug setting on client options set
 func ClientOptDebug(debug bool) ClientOption {
 	return func(client *Client) {

@@ -52,11 +52,11 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type TemplateCmdOptions struct {
-	PostRenderer postrender.PostRenderer
-	ValueOpts    *values.Options
-	Validate     *bool
-	IncludeCrds  *bool
-	IsUpgrade    *bool
+	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
+	ValueOpts         *values.Options
+	Validate          *bool
+	IncludeCrds       *bool
+	IsUpgrade         *bool
 }
 
 func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOptions) (*cobra.Command, *action.Install) {
@@ -86,8 +86,8 @@ func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOp
 				client.KubeVersion = parsedKubeVersion
 			}
 
-			if opts.PostRenderer != nil {
-				client.PostRenderer = opts.PostRenderer
+			if opts.ChainPostRenderer != nil {
+				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
 			}
 			if opts.ValueOpts != nil {
 				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)

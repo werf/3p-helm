@@ -43,6 +43,16 @@ result in an error, and the chart will not be saved locally.
 `
 
 func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	return NewPullCmd(cfg, out, PullCmdOptions{})
+}
+
+type PullCmdOptions struct {
+	Version *string
+	Untar   *bool
+	DestDir *string
+}
+
+func NewPullCmd(cfg *action.Configuration, out io.Writer, opts PullCmdOptions) *cobra.Command {
 	client := action.NewPullWithOpts(action.WithConfig(cfg))
 
 	cmd := &cobra.Command{
@@ -58,6 +68,15 @@ func newPullCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			return compListCharts(toComplete, false)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.Version != nil {
+				client.Version = *opts.Version
+			}
+			if opts.Untar != nil {
+				client.Untar = *opts.Untar
+			}
+			if opts.DestDir != nil {
+				client.DestDir = *opts.DestDir
+			}
 			client.Settings = settings
 			if client.Version == "" && client.Devel {
 				debug("setting version to >0.0.0-0")

@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"helm.sh/helm/v3/pkg/kube"
-
 	"github.com/pkg/errors"
 
 	"helm.sh/helm/v3/pkg/chartutil"

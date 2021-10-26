@@ -73,13 +73,13 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type UpgradeCmdOptions struct {
-	PostRenderer    postrender.PostRenderer
-	ValueOpts       *values.Options
-	CreateNamespace *bool
-	Install         *bool
-	Wait            *bool
-	Atomic          *bool
-	Timeout         *time.Duration
+	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
+	ValueOpts         *values.Options
+	CreateNamespace   *bool
+	Install           *bool
+	Wait              *bool
+	Atomic            *bool
+	Timeout           *time.Duration
 }
 
 func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {
@@ -103,8 +103,8 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.PostRenderer != nil {
-				client.PostRenderer = opts.PostRenderer
+			if opts.ChainPostRenderer != nil {
+				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
 			}
 			if opts.ValueOpts != nil {
 				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)

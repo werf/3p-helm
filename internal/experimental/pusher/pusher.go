@@ -84,7 +84,7 @@ func (p Providers) ByScheme(scheme string) (Pusher, error) {
 
 var ociProvider = Provider{
 	Schemes: []string{registry.OCIScheme},
-	New:     NewOCIPusher,
+	New:     NewOCIPusherNonStrict,
 }
 
 // All finds all of the registered pushers as a list of Provider instances.

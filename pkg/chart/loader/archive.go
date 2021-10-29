@@ -142,6 +142,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 			delimiter = "\\"
 		}
 
+		fmt.Printf("hd.Name=%q\n", hd.Name)
 		parts := strings.Split(hd.Name, delimiter)
 		n := strings.Join(parts[1:], delimiter)
 
@@ -153,6 +154,7 @@ func LoadArchiveFiles(in io.Reader) ([]*BufferedFile, error) {
 		}
 
 		n = path.Clean(n)
+		fmt.Printf("parts=%#v n=%s\n", parts, n)
 		if n == "." {
 			// In this case, the original path was relative when it should have been absolute.
 			return nil, errors.Errorf("chart illegally contains content outside the base directory: %q", hd.Name)

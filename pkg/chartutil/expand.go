@@ -17,6 +17,7 @@ limitations under the License.
 package chartutil
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -87,5 +88,6 @@ func ExpandFile(dest, src string) error {
 		return err
 	}
 	defer h.Close()
+	fmt.Printf("-- ExpandFile %s %s\n", dest, src)
 	return Expand(dest, h)
 }

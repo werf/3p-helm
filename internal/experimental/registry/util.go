@@ -39,7 +39,7 @@ func IsOCI(url string) bool {
 func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
 	ch, err := loader.LoadArchive(bytes.NewReader(chartData))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NONO: %s", err)
 	}
 	return ch.Metadata, nil
 }

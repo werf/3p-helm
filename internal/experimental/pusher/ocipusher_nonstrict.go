@@ -73,6 +73,9 @@ func (pusher *OCIPusherNonStrict) push(chartRef, href string) error {
 	ref := strings.TrimPrefix(href, fmt.Sprintf("%s://", registry.OCIScheme))
 
 	_, err = client.Push(chartBytes, ref, pushOpts...)
+	if err != nil {
+		err = fmt.Errorf("THIS: %s", err)
+	}
 	return err
 }
 

@@ -83,7 +83,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 	return err
 }
 
-// NewOCIPusher constructs a valid OCI client as a Pusher
+// NewOCIPusher constructs a valid OCI client as a Pusher/
 func NewOCIPusher(ops ...Option) (Pusher, error) {
 	registryClient, err := registry.NewClient()
 	if err != nil {

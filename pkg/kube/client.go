@@ -558,6 +558,10 @@ func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.P
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "unable to create patch metadata from object")
 	}
 
+	fmt.Printf("--- --- original:\n%s\n--- ---\n", oldData)
+	fmt.Printf("--- --- modified:\n%s\n--- ---\n", newData)
+	fmt.Printf("--- --- current:\n%s\n--- ---\n", currentData)
+
 	patch, err := strategicpatch.CreateThreeWayMergePatch(oldData, newData, currentData, patchMeta, true)
 	return patch, types.StrategicMergePatchType, err
 }
@@ -578,9 +582,19 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
+		fmt.Printf("--- PATCH BEGIN %s/%s\n", kind, target.Name)
 		patch, patchType, err := createPatch(target, currentObj)
+		fmt.Printf("err: %v\n", err)
+		fmt.Printf("patchType: %v\n", patchType)
+		fmt.Printf("--- --- patch:\n%s\n--- ---\n", patch)
+		fmt.Printf("--- PATCH END %s/%s\n", kind, target.Name)
 		if err != nil {
 			return errors.Wrap(err, "failed to create patch")
+		}
+
+		//time.Sleep(2 * time.Second)
+		if os.Getenv("STOP_IT") == "1" {
+			os.Exit(1)
 		}
 
 		if patch == nil || string(patch) == "{}" {

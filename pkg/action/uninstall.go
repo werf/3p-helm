@@ -85,6 +85,12 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	releaseutil.SortByRevision(rels)
 	rel := rels[len(rels)-1]
 
+	if isServerDryRunEnabled() {
+		if err := u.validateDeleteRelease(rel); err != nil {
+			return &release.UninstallReleaseResponse{Release: rel}, fmt.Errorf("delete release validation failed: %w", err)
+		}
+	}
+
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
 	if rel.Info.Status == release.StatusUninstalled {
@@ -117,7 +123,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	deletedResources, kept, errs := u.deleteRelease(rel)
+	deletedResources, kept, errs := u.deleteRelease(rel, false)
 
 	if kept != "" {
 		kept = "These resources were kept due to the resource policy:\n" + kept
@@ -188,6 +194,18 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	return res, nil
 }
 
+func (u *Uninstall) validateDeleteRelease(rel *release.Release) error {
+	u.cfg.Log("starting server dry-run validation\n")
+
+	if _, _, errs := u.deleteRelease(rel, true); len(errs) > 0 {
+		return errors.Errorf("server dry run release delete failed with %d error(s): %w", len(errs), joinErrors(errs))
+	}
+
+	u.cfg.Log("server dry-run succeeded\n")
+
+	return nil
+}
+
 func (u *Uninstall) purgeReleases(rels ...*release.Release) error {
 	for _, rel := range rels {
 		if _, err := u.cfg.Releases.Delete(rel.Name, rel.Version); err != nil {
@@ -206,7 +224,7 @@ func joinErrors(errs []error) string {
 }
 
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
+func (u *Uninstall) deleteRelease(rel *release.Release, serverDryRun bool) (kube.ResourceList, string, []error) {
 	var errs []error
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
@@ -239,7 +257,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources, kube.DeleteOptions{Wait: true})
+		_, errs = u.cfg.KubeClient.Delete(resources, kube.DeleteOptions{Wait: true, ServerDryRun: serverDryRun})
 	}
 	return resources, kept, errs
 }

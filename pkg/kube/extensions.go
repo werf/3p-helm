@@ -5,6 +5,10 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	rbacv1alpha1 "k8s.io/api/rbac/v1alpha1"
+	rbacv1beta1 "k8s.io/api/rbac/v1beta1"
+	"k8s.io/cli-runtime/pkg/resource"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,4 +33,28 @@ func (c *Client) DeleteNamespace(ctx context.Context, namespace string, opts Del
 	}
 
 	return nil
+}
+
+func (c *Client) keepResourcesSupportingDryRun(resources ResourceList) (ResourceList, error) {
+	verifier, err := c.DryRunVerifierGetter.DryRunVerifier()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get server dry run verifier: %w", err)
+	}
+
+	return resources.Filter(isDryRunSupportedFilter(verifier)), nil
+}
+
+func isDryRunSupportedFilter(dryRunVerifier *resource.DryRunVerifier) func(*resource.Info) bool {
+	return func(info *resource.Info) bool {
+		if err := dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
+			return false
+		}
+
+		switch AsVersioned(info).(type) {
+		case *rbacv1.ClusterRoleBinding, *rbacv1alpha1.ClusterRoleBinding, *rbacv1beta1.ClusterRoleBinding:
+			return false
+		}
+
+		return true
+	}
 }

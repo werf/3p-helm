@@ -111,13 +111,17 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("delete hooks disabled for %s", name)
 	}
 
+	if err := u.validateDeleteRelease(rel); err != nil {
+		return res, fmt.Errorf("delete release validation failed: %w", err)
+	}
+
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := u.cfg.Releases.Update(rel); err != nil {
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	deletedResources, kept, errs := u.deleteRelease(rel)
+	deletedResources, kept, errs := u.deleteRelease(rel, false)
 
 	if kept != "" {
 		kept = "These resources were kept due to the resource policy:\n" + kept
@@ -188,6 +192,16 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	return res, nil
 }
 
+func (u *Uninstall) validateDeleteRelease(rel *release.Release) error {
+	if !isServerDryRunEnabled() {
+		return nil
+	}
+	if _, _, errs := u.deleteRelease(rel, true); len(errs) > 0 {
+		return errors.Errorf("server dry run release delete failed with %d error(s): %w", len(errs), joinErrors(errs))
+	}
+	return nil
+}
+
 func (u *Uninstall) purgeReleases(rels ...*release.Release) error {
 	for _, rel := range rels {
 		if _, err := u.cfg.Releases.Delete(rel.Name, rel.Version); err != nil {
@@ -206,7 +220,7 @@ func joinErrors(errs []error) string {
 }
 
 // deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
+func (u *Uninstall) deleteRelease(rel *release.Release, serverDryRun bool) (kube.ResourceList, string, []error) {
 	var errs []error
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
@@ -239,7 +253,7 @@ func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, stri
 		return nil, "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources, kube.DeleteOptions{Wait: true})
+		_, errs = u.cfg.KubeClient.Delete(resources, kube.DeleteOptions{Wait: true, ServerDryRun: serverDryRun})
 	}
 	return resources, kept, errs
 }

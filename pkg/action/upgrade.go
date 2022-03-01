@@ -305,6 +305,18 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
+	validateCurrent, err := kube.CopyResourceList(u.cfg.KubeClient, current)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
+	}
+	validateTarget, err := kube.CopyResourceList(u.cfg.KubeClient, target)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
+	}
+	if err := u.validateUpgradeRelease(ctx, upgradedRelease, validateCurrent, validateTarget); err != nil {
+		return upgradedRelease, fmt.Errorf("upgrade release validation failed: %w", err)
+	}
+
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
@@ -359,6 +371,50 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		}
 	}()
 }
+
+func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *release.Release, current, target kube.ResourceList) error {
+	if !isServerDryRunEnabled() {
+		return nil
+	}
+
+	kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt)
+	if !ok {
+		return nil
+	}
+
+	rChan := make(chan resultMessage)
+	ctxChan := make(chan resultMessage)
+	doneChan := make(chan interface{})
+
+	go func() {
+		results, err := kubeClient.UpdateWithOptions(current, target, kube.UpdateOptions{Force: u.Force, ServerDryRun: true})
+		if err != nil {
+			u.reportToPerformUpgrade(rChan, upgradedRelease, results.Created, err)
+			return
+		}
+
+		u.reportToPerformUpgrade(rChan, upgradedRelease, nil, nil)
+	}()
+
+	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
+
+	var resErr error
+
+	select {
+	case result := <-rChan:
+		doneChan <- true
+		resErr = result.e
+	case result := <-ctxChan:
+		resErr = result.e
+	}
+
+	if resErr != nil {
+		return fmt.Errorf("server dry run release upgrade failed: %w", resErr)
+	}
+
+	return nil
+}
+
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 

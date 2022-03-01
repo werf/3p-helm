@@ -302,6 +302,10 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
+	if err := u.validateUpgradeRelease(ctx, upgradedRelease, current, target, originalRelease); err != nil {
+		return upgradedRelease, fmt.Errorf("upgrade release validation failed: %w", err)
+	}
+
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
 		if len(u.Description) > 0 {
@@ -346,6 +350,35 @@ func (u *Upgrade) handleContext(ctx context.Context, c chan<- resultMessage, upg
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, err)
 	}()
 }
+
+func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) error {
+	kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt)
+	if !ok {
+		return nil
+	}
+
+	rChan := make(chan resultMessage)
+
+	go func() {
+		results, err := kubeClient.UpdateWithOptions(current, target, kube.UpdateOptions{Force: u.Force, ServerDryRun: true})
+		if err != nil {
+			u.reportToPerformUpgrade(rChan, upgradedRelease, results.Created, err)
+			return
+		}
+
+		u.reportToPerformUpgrade(rChan, upgradedRelease, nil, nil)
+	}()
+
+	go u.handleContext(ctx, rChan, upgradedRelease)
+
+	result := <-rChan
+
+	if result.e != nil {
+		return fmt.Errorf("server dry run release upgrade failed: %w", result.e)
+	}
+	return nil
+}
+
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 

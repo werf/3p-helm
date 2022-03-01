@@ -1,11 +1,5 @@
 package helm_v3
 
-import (
-	"io"
-
-	"helm.sh/helm/v3/internal/experimental/registry"
-)
-
 var (
 	Settings = settings
 
@@ -42,19 +36,3 @@ var (
 
 	LoadPlugins = loadPlugins
 )
-
-func NewRegistryClient(debug, insecure bool, out io.Writer) (*registry.Client, error) {
-	return registry.NewClient(
-		registry.ClientOptDebug(debug),
-		registry.ClientOptInsecure(insecure),
-		registry.ClientOptWriter(out),
-	)
-}
-
-type RegistryClientHandle struct {
-	RegistryClient *registry.Client
-}
-
-func NewRegistryClientHandle(registryClient *registry.Client) *RegistryClientHandle {
-	return &RegistryClientHandle{RegistryClient: registryClient}
-}

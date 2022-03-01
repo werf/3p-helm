@@ -296,6 +296,18 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
+	validateToBeAdopted, err := kube.CopyResourceList(i.cfg.KubeClient, toBeAdopted)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation: %w", err)
+	}
+	validateResources, err := kube.CopyResourceList(i.cfg.KubeClient, resources)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation resources: %w", err)
+	}
+	if err := i.validateInstallRelease(ctx, rel, validateToBeAdopted, validateResources); err != nil {
+		return nil, fmt.Errorf("install release validation failed: %w", err)
+	}
+
 	// Bail out here if it is a dry run
 	if i.DryRun {
 		rel.Info.Description = "Dry run complete"
@@ -349,6 +361,40 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	result := <-rChan
 	//start preformInstall go routine
 	return result.r, result.e
+}
+
+func (i *Install) validateInstallRelease(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) error {
+	kubeClient, ok := i.cfg.KubeClient.(kube.InterfaceExt)
+	if !ok {
+		return nil
+	}
+
+	rChan := make(chan resultMessage)
+
+	go func() {
+		if len(toBeAdopted) == 0 && len(resources) > 0 {
+			if _, err := kubeClient.CreateWithOptions(resources, kube.CreateOptions{ServerDryRun: true}); err != nil {
+				i.reportToRun(rChan, rel, err)
+				return
+			}
+		} else if len(resources) > 0 {
+			if _, err := kubeClient.UpdateWithOptions(toBeAdopted, resources, kube.UpdateOptions{ServerDryRun: true}); err != nil {
+				i.reportToRun(rChan, rel, err)
+				return
+			}
+		}
+
+		i.reportToRun(rChan, rel, nil)
+	}()
+
+	go i.handleContext(ctx, rChan, rel)
+
+	result := <-rChan
+
+	if result.e != nil {
+		return fmt.Errorf("server dry run release install failed: %w", result.e)
+	}
+	return nil
 }
 
 func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {

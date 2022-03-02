@@ -27,12 +27,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v0.0.0-20210614095031-55d5740dbbcc
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/ziutek/mymysql v1.5.4 // indirect
-	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
 	k8s.io/api v0.22.1
 	k8s.io/apiextensions-apiserver v0.22.1

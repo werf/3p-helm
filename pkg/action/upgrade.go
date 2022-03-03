@@ -371,6 +371,8 @@ func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *r
 	}
 
 	rChan := make(chan resultMessage)
+	ctxChan := make(chan resultMessage)
+	doneChan := make(chan interface{})
 
 	go func() {
 		results, err := kubeClient.UpdateWithOptions(current, target, kube.UpdateOptions{Force: u.Force, ServerDryRun: true})
@@ -382,13 +384,22 @@ func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *r
 		u.reportToPerformUpgrade(rChan, upgradedRelease, nil, nil)
 	}()
 
-	go u.handleContext(ctx, rChan, upgradedRelease)
+	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 
-	result := <-rChan
+	var resErr error
 
-	if result.e != nil {
-		return fmt.Errorf("server dry run release upgrade failed: %w", result.e)
+	select {
+	case result := <-rChan:
+		doneChan <- true
+		resErr = result.e
+	case result := <-ctxChan:
+		resErr = result.e
 	}
+
+	if resErr != nil {
+		return fmt.Errorf("server dry run release upgrade failed: %w", resErr)
+	}
+
 	return nil
 }
 

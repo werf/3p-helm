@@ -296,7 +296,15 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
-	if err := i.validateInstallRelease(ctx, rel, toBeAdopted, resources); err != nil {
+	validateToBeAdopted, err := kube.CopyResourceList(i.cfg.KubeClient, toBeAdopted)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation: %w", err)
+	}
+	validateResources, err := kube.CopyResourceList(i.cfg.KubeClient, resources)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation resources: %w", err)
+	}
+	if err := i.validateInstallRelease(ctx, rel, validateToBeAdopted, validateResources); err != nil {
 		return nil, fmt.Errorf("install release validation failed: %w", err)
 	}
 

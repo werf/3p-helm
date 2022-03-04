@@ -305,7 +305,15 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
-	if err := u.validateUpgradeRelease(ctx, upgradedRelease, current, target, originalRelease); err != nil {
+	validateCurrent, err := kube.CopyResourceList(u.cfg.KubeClient, current)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
+	}
+	validateTarget, err := kube.CopyResourceList(u.cfg.KubeClient, target)
+	if err != nil {
+		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
+	}
+	if err := u.validateUpgradeRelease(ctx, upgradedRelease, validateCurrent, validateTarget); err != nil {
 		return upgradedRelease, fmt.Errorf("upgrade release validation failed: %w", err)
 	}
 
@@ -364,7 +372,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 	}()
 }
 
-func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) error {
+func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *release.Release, current, target kube.ResourceList) error {
 	kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
 		return nil

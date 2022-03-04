@@ -16,7 +16,13 @@ limitations under the License.
 
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
-import "k8s.io/cli-runtime/pkg/resource"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+
+	"k8s.io/cli-runtime/pkg/resource"
+)
 
 // ResourceList provides convenience methods for comparing collections of Infos.
 type ResourceList []*resource.Info
@@ -82,4 +88,19 @@ func (r ResourceList) Intersect(rs ResourceList) ResourceList {
 // isMatchingInfo returns true if infos match on Name and GroupVersionKind.
 func isMatchingInfo(a, b *resource.Info) bool {
 	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
+}
+
+func CopyResourceList(client Interface, r ResourceList) (ResourceList, error) {
+	var manifests string
+
+	for _, info := range r {
+		m, err := json.Marshal(info.Object)
+		if err != nil {
+			return nil, fmt.Errorf("unable to serialize resource %s/%s: %w", info.Mapping.GroupVersionKind.Kind, info.Name, err)
+		}
+
+		manifests += fmt.Sprintf("---\n%s\n", m)
+	}
+
+	return client.Build(bytes.NewBufferString(manifests), false)
 }

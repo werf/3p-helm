@@ -149,19 +149,19 @@ func (c *Client) CreateWithOptions(resources ResourceList, opts CreateOptions) (
 	}
 
 	if c.Extender != nil {
-		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
+		if err := performWithOptions(resources, c.Extender.BeforeCreateResource, performOptions{ServerDryRun: opts.ServerDryRun}); err != nil {
 			return nil, err
 		}
 	}
 
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, func(info *resource.Info) error {
+	if err := performWithOptions(resources, func(info *resource.Info) error {
 		if opts.IfNotExists {
 			return createResourceIfNotExists(info, opts.ServerDryRun)
 		} else {
 			return createResource(info, opts.ServerDryRun)
 		}
-	}); err != nil {
+	}, performOptions{ServerDryRun: opts.ServerDryRun}); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -378,7 +378,7 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
-	err := perform(resources, func(info *resource.Info) error {
+	err := performWithOptions(resources, func(info *resource.Info) error {
 		if c.Extender != nil {
 			if err := c.Extender.BeforeDeleteResource(info); err != nil {
 				mtx.Lock()
@@ -401,7 +401,7 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 			res.Deleted = append(res.Deleted, info)
 		}
 		return nil
-	})
+	}, performOptions{ServerDryRun: opts.ServerDryRun})
 	if err != nil {
 		// Rewrite the message from "no objects visited" if that is what we got
 		// back
@@ -471,8 +471,20 @@ func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) 
 }
 
 func perform(infos ResourceList, fn func(*resource.Info) error) error {
+	return performWithOptions(infos, fn, performOptions{})
+}
+
+type performOptions struct {
+	ServerDryRun bool
+}
+
+func performWithOptions(infos ResourceList, fn func(*resource.Info) error, opts performOptions) error {
 	if len(infos) == 0 {
-		return ErrNoObjectsVisited
+		if opts.ServerDryRun {
+			return nil
+		} else {
+			return ErrNoObjectsVisited
+		}
 	}
 
 	errs := make(chan error)
@@ -788,22 +800,4 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 	}
 
 	return v1.PodUnknown, err
-}
-
-func (c *Client) keepResourcesSupportingDryRun(resources ResourceList) (ResourceList, error) {
-	verifier, err := c.DryRunVerifierGetter.DryRunVerifier()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get server dry run verifier: %w", err)
-	}
-
-	return resources.Filter(isDryRunSupportedFilter(verifier)), nil
-}
-
-func isDryRunSupportedFilter(dryRunVerifier *resource.DryRunVerifier) func(*resource.Info) bool {
-	return func(info *resource.Info) bool {
-		if err := dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
-			return false
-		}
-		return true
-	}
 }

@@ -364,6 +364,10 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 }
 
 func (i *Install) validateInstallRelease(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) error {
+	if !isServerDryRunEnabled() {
+		return nil
+	}
+
 	kubeClient, ok := i.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
 		return nil

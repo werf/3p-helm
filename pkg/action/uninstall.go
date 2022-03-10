@@ -193,6 +193,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 }
 
 func (u *Uninstall) validateDeleteRelease(rel *release.Release) error {
+	if !isServerDryRunEnabled() {
+		return nil
+	}
 	if _, _, errs := u.deleteRelease(rel, true); len(errs) > 0 {
 		return errors.Errorf("server dry run release delete failed with %d error(s): %w", len(errs), joinErrors(errs))
 	}

@@ -373,6 +373,10 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 }
 
 func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *release.Release, current, target kube.ResourceList) error {
+	if !isServerDryRunEnabled() {
+		return nil
+	}
+
 	kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
 		return nil

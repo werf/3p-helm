@@ -255,6 +255,10 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 }
 
 func (r *Rollback) validateRollbackRelease(current, target kube.ResourceList) error {
+	if !isServerDryRunEnabled() {
+		return nil
+	}
+
 	kubeClient, ok := r.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
 		return nil

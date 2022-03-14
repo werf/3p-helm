@@ -296,6 +296,12 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		}
 	}
 
+	// Bail out here if it is a dry run
+	if i.DryRun {
+		rel.Info.Description = "Dry run complete"
+		return rel, nil
+	}
+
 	validateToBeAdopted, err := kube.CopyResourceList(i.cfg.KubeClient, toBeAdopted)
 	if err != nil {
 		return nil, fmt.Errorf("unable to prepare validation: %w", err)
@@ -306,12 +312,6 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 	if err := i.validateInstallRelease(ctx, rel, validateToBeAdopted, validateResources); err != nil {
 		return nil, fmt.Errorf("install release validation failed: %w", err)
-	}
-
-	// Bail out here if it is a dry run
-	if i.DryRun {
-		rel.Info.Description = "Dry run complete"
-		return rel, nil
 	}
 
 	if i.CreateNamespace {

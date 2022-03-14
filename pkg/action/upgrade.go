@@ -305,6 +305,16 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return nil
 	})
 
+	if u.DryRun {
+		u.cfg.Log("dry run for %s", upgradedRelease.Name)
+		if len(u.Description) > 0 {
+			upgradedRelease.Info.Description = u.Description
+		} else {
+			upgradedRelease.Info.Description = "Dry run complete"
+		}
+		return upgradedRelease, nil
+	}
+
 	validateCurrent, err := kube.CopyResourceList(u.cfg.KubeClient, current)
 	if err != nil {
 		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
@@ -315,16 +325,6 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 	if err := u.validateUpgradeRelease(ctx, upgradedRelease, validateCurrent, validateTarget); err != nil {
 		return upgradedRelease, fmt.Errorf("upgrade release validation failed: %w", err)
-	}
-
-	if u.DryRun {
-		u.cfg.Log("dry run for %s", upgradedRelease.Name)
-		if len(u.Description) > 0 {
-			upgradedRelease.Info.Description = u.Description
-		} else {
-			upgradedRelease.Info.Description = "Dry run complete"
-		}
-		return upgradedRelease, nil
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)

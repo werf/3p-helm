@@ -143,6 +143,11 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 }
 
 func (r *Rollback) performRollback(currentRelease, targetRelease *release.Release) (*release.Release, error) {
+	if r.DryRun {
+		r.cfg.Log("dry run for %s", targetRelease.Name)
+		return targetRelease, nil
+	}
+
 	validateCurrent, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
 	if err != nil {
 		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
@@ -153,11 +158,6 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 	if err := r.validateRollbackRelease(validateCurrent, validateTarget); err != nil {
 		return targetRelease, fmt.Errorf("rollback release validation failed: %w", err)
-	}
-
-	if r.DryRun {
-		r.cfg.Log("dry run for %s", targetRelease.Name)
-		return targetRelease, nil
 	}
 
 	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)

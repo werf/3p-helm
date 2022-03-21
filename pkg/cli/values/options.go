@@ -89,13 +89,14 @@ func (opts *Options) MergeValues(p getter.Providers, extender chart.ChartExtende
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
 			if extender != nil {
-				if isRead, data, err := extender.ReadFile(string(rs)); err != nil {
+				if isRead, bytes, err := extender.ReadFile(string(rs)); err != nil {
 					return nil, err
 				} else if isRead {
-					return data, err
+					return string(bytes), err
 				}
 			}
-			return readFile(string(rs), p)
+			bytes, err := readFile(string(rs), p)
+			return string(bytes), err
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
 			return nil, errors.Wrap(err, "failed parsing --set-file data")

@@ -280,6 +280,9 @@ func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOpt
 
 		helper := resource.NewHelper(info.Client, info.Mapping).DryRun(opts.ServerDryRun).WithFieldManager(getManagedFieldsManager())
 		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
+			if opts.ServerDryRun && isDryRunUnsupportedError(err) {
+				return nil
+			}
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
 			}
@@ -538,7 +541,9 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 
 func createResource(info *resource.Info, serverDryRun bool) error {
 	obj, err := resource.NewHelper(info.Client, info.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
-	if err != nil {
+	if serverDryRun && isDryRunUnsupportedError(err) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	return info.Refresh(obj, true)
@@ -546,8 +551,10 @@ func createResource(info *resource.Info, serverDryRun bool) error {
 
 func createResourceIfNotExists(info *resource.Info, serverDryRun bool) error {
 	_, err := resource.NewHelper(info.Client, info.Mapping).DryRun(serverDryRun).Get(info.Namespace, info.Name)
-	if apierrors.IsNotFound(err) {
-		return createResource(info, false)
+	if serverDryRun && isDryRunUnsupportedError(err) {
+		return nil
+	} else if apierrors.IsNotFound(err) {
+		return createResource(info, serverDryRun)
 	} else if err != nil {
 		return err
 	}
@@ -559,7 +566,11 @@ func deleteResource(info *resource.Info, serverDryRun bool) error {
 	policy := metav1.DeletePropagationBackground
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
 	_, err := resource.NewHelper(info.Client, info.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
-	return err
+	if serverDryRun && isDryRunUnsupportedError(err) {
+		return nil
+	} else {
+		return err
+	}
 }
 
 func createPatch(target *resource.Info, current runtime.Object, serverDryRun bool) ([]byte, types.PatchType, error) {
@@ -575,7 +586,9 @@ func createPatch(target *resource.Info, current runtime.Object, serverDryRun boo
 	// Fetch the current object for the three way merge
 	helper := resource.NewHelper(target.Client, target.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager())
 	currentObj, err := helper.Get(target.Namespace, target.Name)
-	if err != nil && !apierrors.IsNotFound(err) {
+	if serverDryRun && isDryRunUnsupportedError(err) {
+		return nil, types.StrategicMergePatchType, nil
+	} else if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
 	}
 
@@ -623,7 +636,9 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 	if force {
 		var err error
 		obj, err = helper.Replace(target.Namespace, target.Name, true, target.Object)
-		if err != nil {
+		if serverDryRun && isDryRunUnsupportedError(err) {
+			return nil
+		} else if err != nil {
 			return errors.Wrap(err, "failed to replace object")
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
@@ -645,7 +660,9 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		// send patch to server
 		c.Log("Patch %s %q in namespace %s", kind, target.Name, target.Namespace)
 		obj, err = helper.Patch(target.Namespace, target.Name, patchType, patch, nil)
-		if err != nil {
+		if serverDryRun && isDryRunUnsupportedError(err) {
+			return nil
+		} else if err != nil {
 			return errors.Wrapf(err, "cannot patch %q with kind %s", target.Name, kind)
 		}
 	}

@@ -3,6 +3,7 @@ package kube
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -57,4 +58,12 @@ func isDryRunSupportedFilter(dryRunVerifier *resource.DryRunVerifier) func(*reso
 
 		return true
 	}
+}
+
+func isDryRunUnsupportedError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	return strings.Contains(err.Error(), "admission webhook") && strings.HasSuffix(err.Error(), "does not support dry run")
 }

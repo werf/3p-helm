@@ -302,16 +302,25 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return rel, nil
 	}
 
-	validateToBeAdopted, err := kube.CopyResourceList(i.cfg.KubeClient, toBeAdopted)
-	if err != nil {
-		return nil, fmt.Errorf("unable to prepare validation: %w", err)
-	}
-	validateResources, err := kube.CopyResourceList(i.cfg.KubeClient, resources)
-	if err != nil {
-		return nil, fmt.Errorf("unable to prepare validation resources: %w", err)
-	}
-	if err := i.validateInstallRelease(ctx, rel, validateToBeAdopted, validateResources); err != nil {
-		return nil, fmt.Errorf("install release validation failed: %w", err)
+	if isServerDryRunEnabled() {
+		var validateToBeAdopted kube.ResourceList
+		validateResources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+		}
+		err = validateResources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+		if err != nil {
+			return nil, err
+		}
+		if !i.ClientOnly && !isUpgrade && len(validateResources) > 0 {
+			validateToBeAdopted, err = existingResourceConflict(validateResources, rel.Name, rel.Namespace)
+			if err != nil {
+				return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+			}
+		}
+		if err := i.validateInstallRelease(ctx, rel, validateToBeAdopted, validateResources); err != nil {
+			return nil, fmt.Errorf("install release validation failed: %w", err)
+		}
 	}
 
 	if i.CreateNamespace {
@@ -364,9 +373,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 }
 
 func (i *Install) validateInstallRelease(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) error {
-	if !isServerDryRunEnabled() {
-		return nil
-	}
+	i.cfg.Log("starting server dry-run validation\n")
 
 	kubeClient, ok := i.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
@@ -398,6 +405,9 @@ func (i *Install) validateInstallRelease(ctx context.Context, rel *release.Relea
 	if result.e != nil {
 		return fmt.Errorf("server dry run release install failed: %w", result.e)
 	}
+
+	i.cfg.Log("server dry-run validation succeeded\n")
+
 	return nil
 }
 

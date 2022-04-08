@@ -85,6 +85,12 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	releaseutil.SortByRevision(rels)
 	rel := rels[len(rels)-1]
 
+	if isServerDryRunEnabled() {
+		if err := u.validateDeleteRelease(rel); err != nil {
+			return &release.UninstallReleaseResponse{Release: rel}, fmt.Errorf("delete release validation failed: %w", err)
+		}
+	}
+
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
 	if rel.Info.Status == release.StatusUninstalled {
@@ -109,10 +115,6 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		}
 	} else {
 		u.cfg.Log("delete hooks disabled for %s", name)
-	}
-
-	if err := u.validateDeleteRelease(rel); err != nil {
-		return res, fmt.Errorf("delete release validation failed: %w", err)
 	}
 
 	// From here on out, the release is currently considered to be in StatusUninstalling
@@ -193,12 +195,14 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 }
 
 func (u *Uninstall) validateDeleteRelease(rel *release.Release) error {
-	if !isServerDryRunEnabled() {
-		return nil
-	}
+	u.cfg.Log("starting server dry-run validation\n")
+
 	if _, _, errs := u.deleteRelease(rel, true); len(errs) > 0 {
 		return errors.Errorf("server dry run release delete failed with %d error(s): %w", len(errs), joinErrors(errs))
 	}
+
+	u.cfg.Log("server dry-run succeeded\n")
+
 	return nil
 }
 

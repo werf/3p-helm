@@ -148,16 +148,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, nil
 	}
 
-	validateCurrent, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
-	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
-	}
-	validateTarget, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
-	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
-	}
-	if err := r.validateRollbackRelease(validateCurrent, validateTarget); err != nil {
-		return targetRelease, fmt.Errorf("rollback release validation failed: %w", err)
+	if isServerDryRunEnabled() {
+		validateCurrent, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
+		if err != nil {
+			return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
+		}
+		validateTarget, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
+		if err != nil {
+			return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+		}
+		if err := r.validateRollbackRelease(validateCurrent, validateTarget); err != nil {
+			return targetRelease, fmt.Errorf("rollback release validation failed: %w", err)
+		}
 	}
 
 	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
@@ -255,9 +257,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 }
 
 func (r *Rollback) validateRollbackRelease(current, target kube.ResourceList) error {
-	if !isServerDryRunEnabled() {
-		return nil
-	}
+	r.cfg.Log("starting server dry-run validation\n")
 
 	kubeClient, ok := r.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
@@ -267,6 +267,8 @@ func (r *Rollback) validateRollbackRelease(current, target kube.ResourceList) er
 	if _, err := kubeClient.UpdateWithOptions(current, target, kube.UpdateOptions{Force: r.Force, ServerDryRun: true}); err != nil {
 		return fmt.Errorf("server dry run release rollback failed: %w", err)
 	}
+
+	r.cfg.Log("server dry-run validation succeeded\n")
 
 	return nil
 }

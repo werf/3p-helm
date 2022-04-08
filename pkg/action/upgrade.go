@@ -256,27 +256,27 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	return currentRelease, upgradedRelease, err
 }
 
-func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
+func (u *Upgrade) prepareUpgradeResourcesLists(ctx context.Context, originalRelease, upgradedRelease *release.Release) (kube.ResourceList, kube.ResourceList, *release.Release, error) {
 	current, err := u.cfg.KubeClient.Build(bytes.NewBufferString(originalRelease.Manifest), false)
 	if err != nil {
 		// Checking for removed Kubernetes API error so can provide a more informative error message to the user
 		// Ref: https://github.com/helm/helm/issues/7219
 		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
-			return upgradedRelease, errors.Wrap(err, "current release manifest contains removed kubernetes api(s) for this "+
+			return nil, nil, upgradedRelease, errors.Wrap(err, "current release manifest contains removed kubernetes api(s) for this "+
 				"kubernetes version and it is therefore unable to build the kubernetes "+
 				"objects for performing the diff. error from kubernetes")
 		}
-		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
+		return nil, nil, upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}
 	target, err := u.cfg.KubeClient.Build(bytes.NewBufferString(upgradedRelease.Manifest), !u.DisableOpenAPIValidation)
 	if err != nil {
-		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
+		return nil, nil, upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
 	// It is safe to use force only on target because these are resources currently rendered by the chart.
 	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
 	if err != nil {
-		return upgradedRelease, err
+		return nil, nil, upgradedRelease, err
 	}
 
 	// Do a basic diff using gvk + name to figure out what new resources are being created so we can validate they don't already exist
@@ -294,7 +294,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 
 	toBeUpdated, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
+		return nil, nil, nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
 
 	toBeUpdated.Visit(func(r *resource.Info, err error) error {
@@ -304,6 +304,15 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		current.Append(r)
 		return nil
 	})
+
+	return current, target, upgradedRelease, nil
+}
+
+func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedRelease *release.Release) (*release.Release, error) {
+	current, target, errUpgradedRelease, err := u.prepareUpgradeResourcesLists(ctx, originalRelease, upgradedRelease)
+	if err != nil {
+		return errUpgradedRelease, err
+	}
 
 	if u.DryRun {
 		u.cfg.Log("dry run for %s", upgradedRelease.Name)
@@ -315,16 +324,14 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		return upgradedRelease, nil
 	}
 
-	validateCurrent, err := kube.CopyResourceList(u.cfg.KubeClient, current)
-	if err != nil {
-		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
-	}
-	validateTarget, err := kube.CopyResourceList(u.cfg.KubeClient, target)
-	if err != nil {
-		return nil, fmt.Errorf("unable to prepare validation current resources: %w", err)
-	}
-	if err := u.validateUpgradeRelease(ctx, upgradedRelease, validateCurrent, validateTarget); err != nil {
-		return upgradedRelease, fmt.Errorf("upgrade release validation failed: %w", err)
+	if isServerDryRunEnabled() {
+		validateCurrent, validateTarget, errUpgradedRelease, err := u.prepareUpgradeResourcesLists(ctx, originalRelease, upgradedRelease)
+		if err != nil {
+			return errUpgradedRelease, err
+		}
+		if err := u.validateUpgradeRelease(ctx, upgradedRelease, validateCurrent, validateTarget); err != nil {
+			return upgradedRelease, fmt.Errorf("upgrade release validation failed: %w", err)
+		}
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
@@ -373,9 +380,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 }
 
 func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *release.Release, current, target kube.ResourceList) error {
-	if !isServerDryRunEnabled() {
-		return nil
-	}
+	u.cfg.Log("starting server dry-run validation\n")
 
 	kubeClient, ok := u.cfg.KubeClient.(kube.InterfaceExt)
 	if !ok {
@@ -411,6 +416,8 @@ func (u *Upgrade) validateUpgradeRelease(ctx context.Context, upgradedRelease *r
 	if resErr != nil {
 		return fmt.Errorf("server dry run release upgrade failed: %w", resErr)
 	}
+
+	u.cfg.Log("server dry-run validation succeeded\n")
 
 	return nil
 }

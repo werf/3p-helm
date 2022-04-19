@@ -24,20 +24,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-type CreateOptions struct {
-	ServerDryRun bool
-	IfNotExists  bool
-}
-
 type DeleteOptions struct {
-	Wait         bool
-	WaitTimeout  time.Duration
-	ServerDryRun bool
-}
-
-type UpdateOptions struct {
-	Force        bool
-	ServerDryRun bool
+	Wait        bool
+	WaitTimeout time.Duration
 }
 
 // Interface represents a client capable of communicating with the Kubernetes API.
@@ -96,11 +85,6 @@ type Interface interface {
 type InterfaceExt interface {
 	// WaitForDelete wait up to the given timeout for the specified resources to be deleted.
 	WaitForDelete(resources ResourceList, timeout time.Duration) error
-	// CreateWithOptions creates one or more resources.
-	CreateWithOptions(resources ResourceList, opts CreateOptions) (*Result, error)
-	// UpdateWithOptions updates one or more resources or creates the resource
-	// if it doesn't exist.
-	UpdateWithOptions(original, target ResourceList, opts UpdateOptions) (*Result, error)
 }
 
 var _ Interface = (*Client)(nil)

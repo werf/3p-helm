@@ -18,7 +18,6 @@ package action
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -182,12 +181,4 @@ func mergeStrStrMaps(current, desired map[string]string) map[string]string {
 		result[k] = desiredVal
 	}
 	return result
-}
-
-func isServerDryRunEnabled() bool {
-	v := os.Getenv("DISABLE_SERVER_DRY_RUN")
-	if v == "1" || v == "true" {
-		return false
-	}
-	return true
 }

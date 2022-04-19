@@ -70,9 +70,8 @@ type Client struct {
 
 	kubeClient *kubernetes.Clientset
 
-	ResourcesWaiter      ResourcesWaiter
-	Extender             ClientExtender
-	DryRunVerifierGetter *DryRunVerifierGetter
+	ResourcesWaiter ResourcesWaiter
+	Extender        ClientExtender
 }
 
 var addToScheme sync.Once
@@ -92,11 +91,9 @@ func New(getter genericclioptions.RESTClientGetter) *Client {
 			panic(err)
 		}
 	})
-
 	return &Client{
-		Factory:              cmdutil.NewFactory(getter),
-		DryRunVerifierGetter: NewDryRunVerifierGetter(getter),
-		Log:                  nopLogger,
+		Factory: cmdutil.NewFactory(getter),
+		Log:     nopLogger,
 	}
 }
 
@@ -130,24 +127,6 @@ func (c *Client) IsReachable() error {
 }
 
 func (c *Client) CreateIfNotExists(resources ResourceList) (*Result, error) {
-	return c.CreateWithOptions(resources, CreateOptions{IfNotExists: true})
-}
-
-// Create creates Kubernetes resources specified in the resource list.
-func (c *Client) Create(resources ResourceList) (*Result, error) {
-	return c.CreateWithOptions(resources, CreateOptions{})
-}
-
-// CreateWithOptions creates Kubernetes resources specified in the resource list.
-func (c *Client) CreateWithOptions(resources ResourceList, opts CreateOptions) (*Result, error) {
-	if opts.ServerDryRun {
-		if filtered, err := c.keepResourcesSupportingDryRun(resources); err != nil {
-			return nil, fmt.Errorf("unable to filter resources supporting server dry run mode: %w", err)
-		} else {
-			resources = filtered
-		}
-	}
-
 	if c.Extender != nil {
 		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
 			return nil, err
@@ -155,13 +134,22 @@ func (c *Client) CreateWithOptions(resources ResourceList, opts CreateOptions) (
 	}
 
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, func(info *resource.Info) error {
-		if opts.IfNotExists {
-			return createResourceIfNotExists(info, opts.ServerDryRun)
-		} else {
-			return createResource(info, opts.ServerDryRun)
+	if err := perform(resources, createResourceIfNotExists); err != nil {
+		return nil, err
+	}
+	return &Result{Created: resources}, nil
+}
+
+// Create creates Kubernetes resources specified in the resource list.
+func (c *Client) Create(resources ResourceList) (*Result, error) {
+	if c.Extender != nil {
+		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
+			return nil, err
 		}
-	}); err != nil {
+	}
+
+	c.Log("creating %d resource(s)", len(resources))
+	if err := perform(resources, createResource); err != nil {
 		return nil, err
 	}
 	return &Result{Created: resources}, nil
@@ -251,26 +239,8 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
 func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
-	return c.UpdateWithOptions(original, target, UpdateOptions{Force: force})
-}
-
-func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOptions) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
-
-	if opts.ServerDryRun {
-		if filtered, err := c.keepResourcesSupportingDryRun(original); err != nil {
-			return nil, fmt.Errorf("unable to filter original resources supporting server dry run mode: %w", err)
-		} else {
-			original = filtered
-		}
-
-		if filtered, err := c.keepResourcesSupportingDryRun(target); err != nil {
-			return nil, fmt.Errorf("unable to filter target resources supporting server dry run mode: %w", err)
-		} else {
-			target = filtered
-		}
-	}
 
 	c.Log("checking %d resources for changes", len(target))
 	err := target.Visit(func(info *resource.Info, err error) error {
@@ -278,7 +248,7 @@ func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOpt
 			return err
 		}
 
-		helper := resource.NewHelper(info.Client, info.Mapping).DryRun(opts.ServerDryRun).WithFieldManager(getManagedFieldsManager())
+		helper := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager())
 		if _, err := helper.Get(info.Namespace, info.Name); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return errors.Wrap(err, "could not get information about the resource")
@@ -293,7 +263,7 @@ func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOpt
 				}
 			}
 			// Since the resource does not exist, create it.
-			if err := createResource(info, opts.ServerDryRun); err != nil {
+			if err := createResource(info); err != nil {
 				return errors.Wrap(err, "failed to create resource")
 			}
 
@@ -314,7 +284,7 @@ func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOpt
 			}
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, opts.Force, opts.ServerDryRun); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -353,7 +323,7 @@ func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOpt
 			}
 		}
 
-		if err := deleteResource(info, opts.ServerDryRun); err != nil {
+		if err := deleteResource(info); err != nil {
 			c.Log("Failed to delete %q, err: %s", info.ObjectName(), err)
 			continue
 		}
@@ -367,14 +337,6 @@ func (c *Client) UpdateWithOptions(original, target ResourceList, opts UpdateOpt
 // errors. All successfully deleted items will be returned in the `Deleted`
 // ResourceList that is part of the result.
 func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []error) {
-	if opts.ServerDryRun {
-		if filtered, err := c.keepResourcesSupportingDryRun(resources); err != nil {
-			return nil, []error{fmt.Errorf("unable to filter resources supporting server dry run mode: %w", err)}
-		} else {
-			resources = filtered
-		}
-	}
-
 	var errs []error
 	res := &Result{}
 	mtx := sync.Mutex{}
@@ -390,7 +352,7 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 		}
 
 		c.Log("Starting delete for %q %s", info.Name, info.Mapping.GroupVersionKind.Kind)
-		if err := c.skipIfNotFound(deleteResource(info, opts.ServerDryRun)); err != nil {
+		if err := c.skipIfNotFound(deleteResource(info)); err != nil {
 			mtx.Lock()
 			defer mtx.Unlock()
 			// Collect the error and continue on
@@ -414,7 +376,7 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 		return nil, errs
 	}
 
-	if opts.Wait && !opts.ServerDryRun {
+	if opts.Wait {
 		var specs []*ResourcesWaiterDeleteResourceSpec
 		for _, resource := range res.Deleted {
 			specs = append(specs, &ResourcesWaiterDeleteResourceSpec{
@@ -524,18 +486,18 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
-func createResource(info *resource.Info, serverDryRun bool) error {
-	obj, err := resource.NewHelper(info.Client, info.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
+func createResource(info *resource.Info) error {
+	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
 		return err
 	}
 	return info.Refresh(obj, true)
 }
 
-func createResourceIfNotExists(info *resource.Info, serverDryRun bool) error {
-	_, err := resource.NewHelper(info.Client, info.Mapping).DryRun(serverDryRun).Get(info.Namespace, info.Name)
+func createResourceIfNotExists(info *resource.Info) error {
+	_, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
 	if apierrors.IsNotFound(err) {
-		return createResource(info, false)
+		return createResource(info)
 	} else if err != nil {
 		return err
 	}
@@ -543,14 +505,14 @@ func createResourceIfNotExists(info *resource.Info, serverDryRun bool) error {
 	return nil
 }
 
-func deleteResource(info *resource.Info, serverDryRun bool) error {
+func deleteResource(info *resource.Info) error {
 	policy := metav1.DeletePropagationBackground
 	opts := &metav1.DeleteOptions{PropagationPolicy: &policy}
-	_, err := resource.NewHelper(info.Client, info.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
+	_, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).DeleteWithOptions(info.Namespace, info.Name, opts)
 	return err
 }
 
-func createPatch(target *resource.Info, current runtime.Object, serverDryRun bool) ([]byte, types.PatchType, error) {
+func createPatch(target *resource.Info, current runtime.Object) ([]byte, types.PatchType, error) {
 	oldData, err := json.Marshal(current)
 	if err != nil {
 		return nil, types.StrategicMergePatchType, errors.Wrap(err, "serializing current configuration")
@@ -561,7 +523,7 @@ func createPatch(target *resource.Info, current runtime.Object, serverDryRun boo
 	}
 
 	// Fetch the current object for the three way merge
-	helper := resource.NewHelper(target.Client, target.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager())
+	helper := resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 	currentObj, err := helper.Get(target.Namespace, target.Name)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, types.StrategicMergePatchType, errors.Wrapf(err, "unable to get data for current object %s/%s", target.Namespace, target.Name)
@@ -600,10 +562,10 @@ func createPatch(target *resource.Info, current runtime.Object, serverDryRun boo
 	return patch, types.StrategicMergePatchType, err
 }
 
-func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool, serverDryRun bool) error {
+func updateResource(c *Client, target *resource.Info, currentObj runtime.Object, force bool) error {
 	var (
 		obj    runtime.Object
-		helper = resource.NewHelper(target.Client, target.Mapping).DryRun(serverDryRun).WithFieldManager(getManagedFieldsManager())
+		helper = resource.NewHelper(target.Client, target.Mapping).WithFieldManager(getManagedFieldsManager())
 		kind   = target.Mapping.GroupVersionKind.Kind
 	)
 
@@ -616,7 +578,7 @@ func updateResource(c *Client, target *resource.Info, currentObj runtime.Object,
 		}
 		c.Log("Replaced %q with kind %s for kind %s", target.Name, currentObj.GetObjectKind().GroupVersionKind().Kind, kind)
 	} else {
-		patch, patchType, err := createPatch(target, currentObj, serverDryRun)
+		patch, patchType, err := createPatch(target, currentObj)
 		if err != nil {
 			return errors.Wrap(err, "failed to create patch")
 		}
@@ -784,22 +746,4 @@ func (c *Client) WaitAndGetCompletedPodPhase(name string, timeout time.Duration)
 	}
 
 	return v1.PodUnknown, err
-}
-
-func (c *Client) keepResourcesSupportingDryRun(resources ResourceList) (ResourceList, error) {
-	verifier, err := c.DryRunVerifierGetter.DryRunVerifier()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get server dry run verifier: %w", err)
-	}
-
-	return resources.Filter(isDryRunSupportedFilter(verifier)), nil
-}
-
-func isDryRunSupportedFilter(dryRunVerifier *resource.DryRunVerifier) func(*resource.Info) bool {
-	return func(info *resource.Info) bool {
-		if err := dryRunVerifier.HasSupport(info.Mapping.GroupVersionKind); err != nil {
-			return false
-		}
-		return true
-	}
 }

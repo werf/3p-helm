@@ -302,6 +302,27 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		return rel, nil
 	}
 
+	if isServerDryRunEnabled() {
+		var validateToBeAdopted kube.ResourceList
+		validateResources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
+		}
+		err = validateResources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+		if err != nil {
+			return nil, err
+		}
+		if !i.ClientOnly && !isUpgrade && len(validateResources) > 0 {
+			validateToBeAdopted, err = existingResourceConflict(validateResources, rel.Name, rel.Namespace)
+			if err != nil {
+				return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
+			}
+		}
+		if err := i.validateInstallRelease(ctx, rel, validateToBeAdopted, validateResources); err != nil {
+			return nil, fmt.Errorf("install release validation failed: %w", err)
+		}
+	}
+
 	if i.CreateNamespace {
 		ns := &v1.Namespace{
 			TypeMeta: metav1.TypeMeta{
@@ -351,6 +372,47 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	result := <-rChan
 	//start preformInstall go routine
 	return result.r, result.e
+}
+
+func (i *Install) validateInstallRelease(ctx context.Context, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) error {
+	i.cfg.Log("starting server dry-run validation\n")
+
+	kubeClient, ok := i.cfg.KubeClient.(kube.InterfaceExt)
+	if !ok {
+		return nil
+	}
+
+	rChan := make(chan resultMessage)
+	doneChan := make(chan struct{})
+	defer close(doneChan)
+
+	go func() {
+		if len(toBeAdopted) == 0 && len(resources) > 0 {
+			if _, err := kubeClient.CreateWithOptions(resources, kube.CreateOptions{ServerDryRun: true}); err != nil {
+				i.reportToRun(rChan, rel, err)
+				return
+			}
+		} else if len(resources) > 0 {
+			if _, err := kubeClient.UpdateWithOptions(toBeAdopted, resources, kube.UpdateOptions{ServerDryRun: true}); err != nil {
+				i.reportToRun(rChan, rel, err)
+				return
+			}
+		}
+
+		i.reportToRun(rChan, rel, nil)
+	}()
+
+	go i.handleContext(ctx, rChan, doneChan, rel)
+
+	result := <-rChan
+
+	if result.e != nil {
+		return fmt.Errorf("server dry run release install failed: %w", result.e)
+	}
+
+	i.cfg.Log("server dry-run validation succeeded\n")
+
+	return nil
 }
 
 func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, toBeAdopted kube.ResourceList, resources kube.ResourceList) {

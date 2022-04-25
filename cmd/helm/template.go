@@ -57,6 +57,7 @@ type TemplateCmdOptions struct {
 	Validate          *bool
 	IncludeCrds       *bool
 	IsUpgrade         *bool
+	ShowFiles         *[]string
 }
 
 func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOptions) (*cobra.Command, *action.Install) {
@@ -103,6 +104,9 @@ func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOp
 			}
 			if opts.IsUpgrade != nil {
 				client.IsUpgrade = *opts.IsUpgrade
+			}
+			if opts.ShowFiles != nil {
+				showFiles = *opts.ShowFiles
 			}
 			client.DryRun = true
 			client.ReleaseName = "release-name"

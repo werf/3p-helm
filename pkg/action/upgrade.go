@@ -316,6 +316,10 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
+
+	// Write original manifests into progressing upgrade release before pre-upgrade hooks are done
+	upgradedManifestDoc := upgradedRelease.Manifest
+	upgradedRelease.Manifest = originalRelease.Manifest
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
@@ -323,7 +327,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
+	go u.releasingUpgrade(rChan, upgradedRelease, upgradedManifestDoc, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {
 	case result := <-rChan:
@@ -357,7 +361,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, upgradedManifestsDoc string, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -368,6 +372,16 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
+
+	// For release consistency save upgraded manifests after pre-upgrade hooks succeeded,
+	// just before performing actual resources update
+	func() {
+		u.Lock.Lock()
+		defer u.Lock.Unlock()
+
+		upgradedRelease.Manifest = upgradedManifestsDoc
+		u.cfg.recordRelease(upgradedRelease)
+	}()
 
 	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
 	if err != nil {

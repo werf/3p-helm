@@ -316,9 +316,14 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
+
+	// Write original manifests into progressing upgrade release before pre-upgrade hooks are done
+	upgradedManifestDoc := upgradedRelease.Manifest
+	upgradedRelease.Manifest = originalRelease.Manifest
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
+	upgradedRelease.Manifest = upgradedManifestDoc
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
@@ -362,12 +367,21 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
+			upgradedRelease.Manifest = originalRelease.Manifest // TODO(helm-for-werf): use just hooks from the new upgraded release manifests
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
+
+	// For release consistency save upgraded manifests after pre-upgrade hooks succeeded,
+	// just before performing actual resources update
+	func() {
+		u.Lock.Lock()
+		defer u.Lock.Unlock()
+		u.cfg.recordRelease(upgradedRelease)
+	}()
 
 	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
 	if err != nil {

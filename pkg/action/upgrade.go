@@ -264,7 +264,8 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		if strings.Contains(err.Error(), "unable to recognize \"\": no matches for kind") {
 			return upgradedRelease, errors.Wrap(err, "current release manifest contains removed kubernetes api(s) for this "+
 				"kubernetes version and it is therefore unable to build the kubernetes "+
-				"objects for performing the diff. error from kubernetes")
+				"objects for performing the diff. error from kubernetes; "+fmt.Sprintf("unable to load original manifests:\n%s\n---\nupgraded release manifests:\n%s\n---\nPlease report to https://github.com/werf/werf/issues if this error have occured for an actual api version", originalRelease.Manifest, upgradedRelease.Manifest))
+
 		}
 		return upgradedRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
 	}

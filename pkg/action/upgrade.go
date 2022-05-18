@@ -103,6 +103,8 @@ type Upgrade struct {
 	DependencyUpdate bool
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+	
+	ResourcesSplitter ResourcesSplitter
 }
 
 type resultMessage struct {
@@ -363,8 +365,10 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 	}
 }
 func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, upgradedManifestsDoc string, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
-	// pre-upgrade hooks
+	upgradedRelease.Manifest = upgradedManifestsDoc
 
+	// pre-upgrade hooks
+	
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
@@ -373,49 +377,73 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
+	
+	if u.ResourcesSplitter != nil {
+		/*
+         	 sets, err := u.ResourcesSplitter.Split(current, target)
+		 for _, set := range sets{
+		   upgradedRelease.Manifest = set
+		   recordRelease(upgradedeRelease)
 
-	// For release consistency save upgraded manifests after pre-upgrade hooks succeeded,
-	// just before performing actual resources update
-	func() {
-		u.Lock.Lock()
-		defer u.Lock.Unlock()
-
-		upgradedRelease.Manifest = upgradedManifestsDoc
-		u.cfg.recordRelease(upgradedRelease)
-	}()
-
-	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
-	if err != nil {
-		u.cfg.recordRelease(originalRelease)
-		u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-		return
-	}
-
-	if u.Recreate {
-		// NOTE: Because this is not critical for a release to succeed, we just
-		// log if an error occurs and continue onward. If we ever introduce log
-		// levels, we should make these error level logs so users are notified
-		// that they'll need to go do the cleanup on their own
-		if err := recreate(u.cfg, results.Updated); err != nil {
-			u.cfg.Log(err.Error())
-		}
-	}
-
-	if u.Wait {
-		if u.WaitForJobs {
-			if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
-				u.cfg.recordRelease(originalRelease)
-				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
-				return
-			}
-		} else {
+		   u.cfg.KubeClient.Update(current, set, u.Force)
+		   ...
+		   
+		   
+		   if u.Wait {
 			if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
 				u.cfg.recordRelease(originalRelease)
 				u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
 				return
 			}
+  		   }
+		 }
+		*/
+	} else {
+		// For release consistency save upgraded manifests after pre-upgrade hooks succeeded,
+		// just before performing actual resources update
+		func() {
+			u.Lock.Lock()
+			defer u.Lock.Unlock()
+
+			upgradedRelease.Manifest = upgradedManifestsDoc
+			u.cfg.recordRelease(upgradedRelease)
+		}()
+
+		results, err := u.cfg.KubeClient.Update(current, target, u.Force)
+		if err != nil {
+			u.cfg.recordRelease(originalRelease)
+			u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+			return
+		}
+		
+		if u.Recreate {
+			// NOTE: Because this is not critical for a release to succeed, we just
+			// log if an error occurs and continue onward. If we ever introduce log
+			// levels, we should make these error level logs so users are notified
+			// that they'll need to go do the cleanup on their own
+			if err := recreate(u.cfg, results.Updated); err != nil {
+				u.cfg.Log(err.Error())
+			}
+		}
+
+		if u.Wait {
+			if u.WaitForJobs {
+				if err := u.cfg.KubeClient.WaitWithJobs(target, u.Timeout); err != nil {
+					u.cfg.recordRelease(originalRelease)
+					u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+					return
+				}
+			} else {
+				if err := u.cfg.KubeClient.Wait(target, u.Timeout); err != nil {
+					u.cfg.recordRelease(originalRelease)
+					u.reportToPerformUpgrade(c, upgradedRelease, results.Created, err)
+					return
+				}
+			}
 		}
 	}
+	
+
 
 	// post-upgrade hooks
 	if !u.DisableHooks {

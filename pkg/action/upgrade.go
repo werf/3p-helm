@@ -324,11 +324,12 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
+	upgradedRelease.Manifest = upgradedManifestDoc
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
 	defer close(doneChan)
-	go u.releasingUpgrade(rChan, upgradedRelease, upgradedManifestDoc, current, target, originalRelease)
+	go u.releasingUpgrade(rChan, upgradedRelease, current, target, originalRelease)
 	go u.handleContext(ctx, doneChan, ctxChan, upgradedRelease)
 	select {
 	case result := <-rChan:
@@ -362,7 +363,7 @@ func (u *Upgrade) handleContext(ctx context.Context, done chan interface{}, c ch
 		return
 	}
 }
-func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, upgradedManifestsDoc string, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
+func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *release.Release, current kube.ResourceList, target kube.ResourceList, originalRelease *release.Release) {
 	// pre-upgrade hooks
 
 	if !u.DisableHooks {
@@ -379,8 +380,6 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	func() {
 		u.Lock.Lock()
 		defer u.Lock.Unlock()
-
-		upgradedRelease.Manifest = upgradedManifestsDoc
 		u.cfg.recordRelease(upgradedRelease)
 	}()
 

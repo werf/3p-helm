@@ -185,14 +185,22 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 
 	isUpgrade := true
-	currentRelease := lastRelease
-	_, err = u.cfg.Releases.Deployed(name)
-	if err != nil {
-		if errors.Is(err, driver.ErrNoDeployedReleases) &&
-			(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded || lastRelease.Info.Status == release.StatusPendingInstall || lastRelease.Info.Status == release.StatusPendingUpgrade || lastRelease.Info.Status == release.StatusPendingRollback) {
-			isUpgrade = false
-		} else {
-			return nil, nil, err
+
+	var currentRelease *release.Release
+	if lastRelease.Info.Status == release.StatusDeployed {
+		// no need to retrieve the last deployed release from storage as the last release is deployed
+		currentRelease = lastRelease
+	} else {
+		// finds the deployed release with the given name
+		currentRelease, err = u.cfg.Releases.Deployed(name)
+		if err != nil {
+			if errors.Is(err, driver.ErrNoDeployedReleases) &&
+				(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded || lastRelease.Info.Status == release.StatusPendingInstall || lastRelease.Info.Status == release.StatusPendingUpgrade || lastRelease.Info.Status == release.StatusPendingRollback) {
+				currentRelease = lastRelease
+				isUpgrade = false
+			} else {
+				return nil, nil, err
+			}
 		}
 	}
 

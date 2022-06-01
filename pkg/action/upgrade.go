@@ -185,14 +185,22 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 
 	isUpgrade := true
-	currentRelease := lastRelease
-	_, err = u.cfg.Releases.Deployed(name)
-	if err != nil {
-		if errors.Is(err, driver.ErrNoDeployedReleases) &&
-			(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded || lastRelease.Info.Status == release.StatusPendingInstall || lastRelease.Info.Status == release.StatusPendingUpgrade || lastRelease.Info.Status == release.StatusPendingRollback) {
-			isUpgrade = false
-		} else {
-			return nil, nil, err
+
+	var currentRelease *release.Release
+	if lastRelease.Info.Status == release.StatusDeployed {
+		// no need to retrieve the last deployed release from storage as the last release is deployed
+		currentRelease = lastRelease
+	} else {
+		// finds the deployed release with the given name
+		currentRelease, err = u.cfg.Releases.Deployed(name)
+		if err != nil {
+			if errors.Is(err, driver.ErrNoDeployedReleases) &&
+				(lastRelease.Info.Status == release.StatusFailed || lastRelease.Info.Status == release.StatusSuperseded || lastRelease.Info.Status == release.StatusPendingInstall || lastRelease.Info.Status == release.StatusPendingUpgrade || lastRelease.Info.Status == release.StatusPendingRollback) {
+				currentRelease = lastRelease
+				isUpgrade = false
+			} else {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -317,14 +325,9 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 
 	u.cfg.Log("creating upgraded release for %s", upgradedRelease.Name)
-
-	// Write original manifests into progressing upgrade release before pre-upgrade hooks are done
-	upgradedManifestDoc := upgradedRelease.Manifest
-	upgradedRelease.Manifest = originalRelease.Manifest
 	if err := u.cfg.Releases.Create(upgradedRelease); err != nil {
 		return nil, err
 	}
-	upgradedRelease.Manifest = upgradedManifestDoc
 	rChan := make(chan resultMessage)
 	ctxChan := make(chan resultMessage)
 	doneChan := make(chan interface{})
@@ -368,21 +371,12 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	if !u.DisableHooks {
 		if err := u.cfg.execHook(upgradedRelease, release.HookPreUpgrade, u.Timeout); err != nil {
-			upgradedRelease.Manifest = originalRelease.Manifest // TODO(helm-for-werf): use just hooks from the new upgraded release manifests
 			u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("pre-upgrade hooks failed: %s", err))
 			return
 		}
 	} else {
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
-
-	// For release consistency save upgraded manifests after pre-upgrade hooks succeeded,
-	// just before performing actual resources update
-	func() {
-		u.Lock.Lock()
-		defer u.Lock.Unlock()
-		u.cfg.recordRelease(upgradedRelease)
-	}()
 
 	results, err := u.cfg.KubeClient.Update(current, target, u.Force)
 	if err != nil {

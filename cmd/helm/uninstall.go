@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -42,12 +43,13 @@ func newUninstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type UninstallCmdOptions struct {
+	StagesSplitter  stages.Splitter
 	DeleteNamespace *bool
 	DeleteHooks     *bool
 }
 
 func NewUninstallCmd(cfg *action.Configuration, out io.Writer, opts UninstallCmdOptions) *cobra.Command {
-	client := action.NewUninstall(cfg)
+	client := action.NewUninstall(cfg, opts.StagesSplitter)
 
 	cmd := &cobra.Command{
 		Use:        "uninstall RELEASE_NAME [...]",

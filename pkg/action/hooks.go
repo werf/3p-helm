@@ -17,12 +17,12 @@ package action
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -43,7 +43,7 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 	// hooke are pre-ordered by kind, so keep order stable
 	sort.Stable(hookByWeight(executingHooks))
 
-	for _, h := range executingHooks {
+	for i, h := range executingHooks {
 		// Set default delete policy to before-hook-creation
 		if h.DeletePolicies == nil || len(h.DeletePolicies) == 0 {
 			// TODO(jlegrone): Only apply before-hook-creation delete policy to run to completion
@@ -67,7 +67,10 @@ func (cfg *Configuration) execHook(rl *release.Release, hook release.HookEvent, 
 			StartedAt: helmtime.Now(),
 			Phase:     release.HookPhaseRunning,
 		}
-		cfg.recordRelease(rl)
+
+		if err := cfg.Releases.Update(release.SetHookPhaseStageInfo(rl, i, hook)); err != nil {
+			return fmt.Errorf("error recording release: %w", err)
+		}
 
 		// As long as the implementation of WatchUntilReady does not panic, HookPhaseFailed or HookPhaseSucceeded
 		// should always be set by this function. If we fail to do that for any reason, then HookPhaseUnknown is

@@ -13,7 +13,6 @@ var (
 	NewLintCmd       = newLintCmd
 	NewListCmd       = newListCmd
 	NewRepoCmd       = newRepoCmd
-	NewRollbackCmd   = newRollbackCmd
 	NewCreateCmd     = newCreateCmd
 	NewEnvCmd        = newEnvCmd
 	NewPackageCmd    = newPackageCmd
@@ -31,6 +30,7 @@ var (
 	// NewInstallCmd    = newInstallCmd
 	// NewUpgradeCmd    = newUpgradeCmd
 	// NewUninstallCmd  = newUninstallCmd
+	// NewRollbackCmd   = newRollbackCmd
 	NewPullCmd = newPullCmd
 	NewPushCmd = newPushCmd
 

@@ -17,12 +17,14 @@ limitations under the License.
 package action
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"time"
 
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/phasemanagers"
+	"helm.sh/helm/v3/pkg/phasemanagers/phases"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 
 	"github.com/pkg/errors"
 
@@ -47,12 +49,19 @@ type Rollback struct {
 	Force         bool // will (if true) force resource upgrade through uninstall/recreate if needed
 	CleanupOnFail bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
+
+	StagesSplitter stages.Splitter
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
-func NewRollback(cfg *Configuration) *Rollback {
+func NewRollback(cfg *Configuration, stagesSplitter stages.Splitter) *Rollback {
+	if stagesSplitter == nil {
+		stagesSplitter = stages.SingleStageSplitter{}
+	}
+
 	return &Rollback{
-		cfg: cfg,
+		cfg:            cfg,
+		StagesSplitter: stagesSplitter,
 	}
 }
 
@@ -120,7 +129,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 	}
 
 	// Store a new release object with previous release's configuration
-	targetRelease := &release.Release{
+	targetRelease := release.SetInitPhaseStageInfo(&release.Release{
 		Name:      name,
 		Namespace: currentRelease.Namespace,
 		Chart:     previousRelease.Chart,
@@ -137,7 +146,7 @@ func (r *Rollback) prepareRollback(name string) (*release.Release, *release.Rele
 		Version:  currentRelease.Version + 1,
 		Manifest: previousRelease.Manifest,
 		Hooks:    previousRelease.Hooks,
-	}
+	})
 
 	return currentRelease, targetRelease, nil
 }
@@ -146,15 +155,6 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	if r.DryRun {
 		r.cfg.Log("dry run for %s", targetRelease.Name)
 		return targetRelease, nil
-	}
-
-	current, err := r.cfg.KubeClient.Build(bytes.NewBufferString(currentRelease.Manifest), false)
-	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from current release manifest")
-	}
-	target, err := r.cfg.KubeClient.Build(bytes.NewBufferString(targetRelease.Manifest), false)
-	if err != nil {
-		return targetRelease, errors.Wrap(err, "unable to build kubernetes objects from new release manifest")
 	}
 
 	// pre-rollback hooks
@@ -166,57 +166,93 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.Log("rollback hooks disabled for %s", targetRelease.Name)
 	}
 
-	results, err := r.cfg.KubeClient.Update(current, target, r.Force)
-
+	history, err := phasemanagers.ReleaseHistoryUntilRevision(targetRelease.Name, targetRelease.Version, r.cfg.Releases)
 	if err != nil {
-		msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
-		r.cfg.Log("warning: %s", msg)
-		currentRelease.Info.Status = release.StatusSuperseded
-		targetRelease.Info.Status = release.StatusFailed
-		targetRelease.Info.Description = msg
-		r.cfg.recordRelease(currentRelease)
-		r.cfg.recordRelease(targetRelease)
-		if r.CleanupOnFail {
-			r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(results.Created))
-			_, errs := r.cfg.KubeClient.Delete(results.Created, kube.DeleteOptions{Wait: true, WaitTimeout: r.Timeout})
-			if errs != nil {
-				var errorList []string
-				for _, e := range errs {
-					errorList = append(errorList, e.Error())
-				}
-				return targetRelease, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original rollback error: %s", err)
-			}
-			r.cfg.Log("Resource cleanup complete")
-		}
+		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
 		return targetRelease, err
 	}
 
-	if r.Recreate {
-		// NOTE: Because this is not critical for a release to succeed, we just
-		// log if an error occurs and continue onward. If we ever introduce log
-		// levels, we should make these error level logs so users are notified
-		// that they'll need to go do the cleanup on their own
-		if err := recreate(r.cfg, results.Updated); err != nil {
-			r.cfg.Log(err.Error())
-		}
+	rolloutPhase, err := phases.
+		NewRolloutPhase(targetRelease, r.StagesSplitter).
+		ParseStagesFromString(targetRelease.Manifest, r.cfg.KubeClient)
+	if err != nil {
+		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
+		return targetRelease, err
 	}
 
-	if r.Wait {
-		if r.WaitForJobs {
-			if err := r.cfg.KubeClient.WaitWithJobs(target, r.Timeout); err != nil {
-				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-				r.cfg.recordRelease(currentRelease)
-				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(history, r.StagesSplitter, r.cfg.KubeClient)
+
+	rolloutPhaseManager, err := phasemanagers.
+		NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, targetRelease, r.cfg.Releases, r.cfg.KubeClient).
+		AddCalculatedPreviouslyDeployedResources()
+	if err != nil {
+		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
+		return targetRelease, err
+	}
+
+	if err := rolloutPhaseManager.DoStage(
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			if len(prevDeployedStgResources) == 0 {
+				stage.Result, err = r.cfg.KubeClient.Create(stage.DesiredResources)
+				if err != nil {
+					return err
+				}
+			} else {
+				stage.Result, err = r.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, r.Force)
+				if err != nil {
+					return err
+				}
 			}
-		} else {
-			if err := r.cfg.KubeClient.Wait(target, r.Timeout); err != nil {
-				targetRelease.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", targetRelease.Name, err.Error()))
-				r.cfg.recordRelease(currentRelease)
-				r.cfg.recordRelease(targetRelease)
-				return targetRelease, errors.Wrapf(err, "release %s failed", targetRelease.Name)
+
+			if r.Recreate {
+				// NOTE: Because this is not critical for a release to succeed, we just
+				// log if an error occurs and continue onward. If we ever introduce log
+				// levels, we should make these error level logs so users are notified
+				// that they'll need to go do the cleanup on their own
+				if err := recreate(r.cfg, stage.Result.Updated); err != nil {
+					r.cfg.Log(err.Error())
+				}
+			}
+
+			if r.Wait {
+				if r.WaitForJobs {
+					if err := r.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, r.Timeout); err != nil {
+						return err
+					}
+				} else {
+					if err := r.cfg.KubeClient.Wait(stage.DesiredResources, r.Timeout); err != nil {
+						return err
+					}
+				}
+			}
+
+			return nil
+		},
+	); err != nil {
+		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
+
+		if r.CleanupOnFail {
+			createdResources := rolloutPhaseManager.Phase.SortedStages.MergedCreatedResources()
+
+			if len(createdResources) > 0 {
+				r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(createdResources))
+				_, errs := r.cfg.KubeClient.Delete(createdResources, kube.DeleteOptions{Wait: r.Wait, WaitTimeout: r.Timeout})
+				if errs != nil {
+					var errorList []string
+					for _, e := range errs {
+						errorList = append(errorList, e.Error())
+					}
+					return targetRelease, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original rollback error: %s", err)
+				}
+				r.cfg.Log("Resource cleanup complete")
 			}
 		}
+
+		return targetRelease, err
+	}
+
+	if err := rolloutPhaseManager.DeleteOrphanedResources(); err != nil {
+		r.cfg.Log("failure removing resources no longer present in the release: %w", err)
 	}
 
 	// post-rollback hooks
@@ -232,6 +268,10 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 	// Supersede all previous deployments, see issue #2941.
 	for _, rel := range deployed {
+		if rel.Version == targetRelease.Version {
+			continue
+		}
+
 		r.cfg.Log("superseding previous deployment %d", rel.Version)
 		rel.Info.Status = release.StatusSuperseded
 		r.cfg.recordRelease(rel)
@@ -240,4 +280,17 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	targetRelease.Info.Status = release.StatusDeployed
 
 	return targetRelease, nil
+}
+
+func recordFailedStatus(cfg *Configuration, currentRelease, targetRelease *release.Release, err error) {
+	msg := fmt.Sprintf("Rollback %q failed: %s", targetRelease.Name, err)
+
+	cfg.Log("warning: %s", msg)
+	targetRelease.Info.Description = msg
+
+	currentRelease.Info.Status = release.StatusSuperseded
+	targetRelease.Info.Status = release.StatusFailed
+
+	cfg.recordRelease(currentRelease)
+	cfg.recordRelease(targetRelease)
 }

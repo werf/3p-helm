@@ -178,7 +178,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 		newInstallCmd(actionConfig, out),
 		newListCmd(actionConfig, out),
 		newReleaseTestCmd(actionConfig, out),
-		newRollbackCmd(actionConfig, out),
+		newRollBackCmd(actionConfig, out),
 		newStatusCmd(actionConfig, out),
 		newTemplateCmd(actionConfig, out),
 		newUninstallCmd(actionConfig, out),

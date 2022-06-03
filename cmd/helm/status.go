@@ -117,6 +117,12 @@ func (s statusPrinter) WriteTable(out io.Writer) error {
 	if !s.release.Info.LastDeployed.IsZero() {
 		fmt.Fprintf(out, "LAST DEPLOYED: %s\n", s.release.Info.LastDeployed.Format(time.ANSIC))
 	}
+	if s.release.Info.LastPhase != nil {
+		fmt.Fprintf(out, "LAST PHASE: %s\n", *s.release.Info.LastPhase)
+	}
+	if s.release.Info.LastStage != nil {
+		fmt.Fprintf(out, "LAST STAGE: %d\n", *s.release.Info.LastStage)
+	}
 	fmt.Fprintf(out, "NAMESPACE: %s\n", s.release.Namespace)
 	fmt.Fprintf(out, "STATUS: %s\n", s.release.Info.Status.String())
 	fmt.Fprintf(out, "REVISION: %d\n", s.release.Version)

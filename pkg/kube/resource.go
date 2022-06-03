@@ -16,7 +16,13 @@ limitations under the License.
 
 package kube // import "helm.sh/helm/v3/pkg/kube"
 
-import "k8s.io/cli-runtime/pkg/resource"
+import (
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/resource"
+)
 
 // ResourceList provides convenience methods for comparing collections of Infos.
 type ResourceList []*resource.Info
@@ -24,6 +30,13 @@ type ResourceList []*resource.Info
 // Append adds an Info to the Result.
 func (r *ResourceList) Append(val *resource.Info) {
 	*r = append(*r, val)
+}
+
+func (r *ResourceList) Merge(rs ResourceList) {
+	*r = r.Difference(rs)
+	for _, res := range rs {
+		r.Append(res)
+	}
 }
 
 // Visit implements resource.Visitor.
@@ -77,6 +90,27 @@ func (r ResourceList) Difference(rs ResourceList) ResourceList {
 // Intersect will return a new Result with objects contained in both Results.
 func (r ResourceList) Intersect(rs ResourceList) ResourceList {
 	return r.Filter(rs.Contains)
+}
+
+func (r ResourceList) ToYamlDocs() (string, error) {
+	var manifestsStr string
+	for _, res := range r {
+		var err error
+		unstructuredObj := unstructured.Unstructured{}
+		unstructuredObj.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(res.Object)
+		if err != nil {
+			return "", fmt.Errorf("error converting object to unstructured type: %w", err)
+		}
+
+		objByte, err := unstructuredObj.MarshalJSON()
+		if err != nil {
+			return "", fmt.Errorf("error marshaling object: %w", err)
+		}
+
+		manifestsStr = fmt.Sprintf("%s\n---\n%s", manifestsStr, string(objByte))
+	}
+
+	return manifestsStr, nil
 }
 
 // isMatchingInfo returns true if infos match on Name and GroupVersionKind.

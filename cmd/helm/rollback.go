@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -38,8 +39,17 @@ roll back to the previous release.
 To see revision numbers, run 'helm history RELEASE'.
 `
 
-func newRollbackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewRollback(cfg)
+type RollbackCmdOptions struct {
+	StagesSplitter stages.Splitter
+}
+
+func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	cmd := NewRollbackCmd(cfg, out, RollbackCmdOptions{})
+	return cmd
+}
+
+func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOptions) *cobra.Command {
+	client := action.NewRollback(cfg, opts.StagesSplitter)
 
 	cmd := &cobra.Command{
 		Use:   "rollback <RELEASE> [REVISION]",

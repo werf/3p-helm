@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -73,6 +74,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type UpgradeCmdOptions struct {
+	StagesSplitter    stages.Splitter
 	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
 	ValueOpts         *values.Options
 	CreateNamespace   *bool
@@ -83,7 +85,7 @@ type UpgradeCmdOptions struct {
 }
 
 func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {
-	client := action.NewUpgrade(cfg)
+	client := action.NewUpgrade(cfg, opts.StagesSplitter)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
@@ -141,7 +143,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
-					instClient := action.NewInstall(cfg)
+					instClient := action.NewInstall(cfg, opts.StagesSplitter)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun

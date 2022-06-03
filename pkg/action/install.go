@@ -32,6 +32,9 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/phasemanagers"
+	"helm.sh/helm/v3/pkg/phasemanagers/phases"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,6 +103,7 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
+	StagesSplitter stages.Splitter
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 }
@@ -124,9 +128,14 @@ type ChartPathOptions struct {
 }
 
 // NewInstall creates a new Install object with the given configuration.
-func NewInstall(cfg *Configuration) *Install {
+func NewInstall(cfg *Configuration, stagesSplitter stages.Splitter) *Install {
+	if stagesSplitter == nil {
+		stagesSplitter = stages.SingleStageSplitter{}
+	}
+
 	in := &Install{
-		cfg: cfg,
+		cfg:            cfg,
+		StagesSplitter: stagesSplitter,
 	}
 	in.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -363,33 +372,69 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		}
 	}
 
-	// At this point, we can do the install. Note that before we were detecting whether to
-	// do an update, but it's not clear whether we WANT to do an update if the re-use is set
-	// to true, since that is basically an upgrade operation.
-	if len(toBeAdopted) == 0 && len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Create(resources); err != nil {
-			i.reportToRun(c, rel, err)
-			return
-		}
-	} else if len(resources) > 0 {
-		if _, err := i.cfg.KubeClient.Update(toBeAdopted, resources, false); err != nil {
-			i.reportToRun(c, rel, err)
-			return
-		}
+	history, err := phasemanagers.ReleaseHistoryUntilRevision(rel.Name, rel.Version, i.cfg.Releases)
+	if err != nil {
+		i.reportToRun(c, rel, fmt.Errorf("error getting release history: %w", err))
+		return
 	}
 
-	if i.Wait {
-		if i.WaitForJobs {
-			if err := i.cfg.KubeClient.WaitWithJobs(resources, i.Timeout); err != nil {
-				i.reportToRun(c, rel, err)
-				return
+	rolloutPhase, err := phases.
+		NewRolloutPhase(rel, i.StagesSplitter).
+		ParseStages(resources)
+	if err != nil {
+		i.reportToRun(c, rel, fmt.Errorf("error parsing stages for rollout phase: %w", err))
+		return
+	}
+
+	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(history, i.StagesSplitter, i.cfg.KubeClient)
+
+	rolloutPhaseManager, err := phasemanagers.
+		NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, rel, i.cfg.Releases, i.cfg.KubeClient).
+		AddPreviouslyDeployedResources(toBeAdopted).
+		AddCalculatedPreviouslyDeployedResources()
+	if err != nil {
+		i.reportToRun(c, rel, fmt.Errorf("error calculating previously deployed resources for rollout phase manager: %w", err))
+		return
+	}
+
+	if err := rolloutPhaseManager.DoStage(
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			// At this point, we can do the install. Note that before we were detecting whether to
+			// do an update, but it's not clear whether we WANT to do an update if the re-use is set
+			// to true, since that is basically an upgrade operation.
+			if len(prevDeployedStgResources) == 0 && len(stage.DesiredResources) > 0 {
+				stage.Result, err = i.cfg.KubeClient.Create(stage.DesiredResources)
+				if err != nil {
+					return err
+				}
+			} else if len(stage.DesiredResources) > 0 {
+				stage.Result, err = i.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, false)
+				if err != nil {
+					return err
+				}
 			}
-		} else {
-			if err := i.cfg.KubeClient.Wait(resources, i.Timeout); err != nil {
-				i.reportToRun(c, rel, err)
-				return
+
+			if i.Wait {
+				if i.WaitForJobs {
+					if err := i.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, i.Timeout); err != nil {
+						return err
+					}
+				} else {
+					if err := i.cfg.KubeClient.Wait(stage.DesiredResources, i.Timeout); err != nil {
+						return err
+					}
+				}
 			}
-		}
+
+			return nil
+		},
+	); err != nil {
+		i.reportToRun(c, rel, fmt.Errorf("error processing rollout phase stage: %w", err))
+		return
+	}
+
+	if err := rolloutPhaseManager.DeleteOrphanedResources(); err != nil {
+		i.cfg.Log("failure removing resources no longer present in the release: %w", err)
 	}
 
 	if !i.DisableHooks {
@@ -439,7 +484,7 @@ func (i *Install) failRelease(rel *release.Release, err error) (*release.Release
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
 	if i.Atomic {
 		i.cfg.Log("Install failed and atomic is set, uninstalling release")
-		uninstall := NewUninstall(i.cfg)
+		uninstall := NewUninstall(i.cfg, i.StagesSplitter)
 		uninstall.DisableHooks = i.DisableHooks
 		uninstall.KeepHistory = false
 		uninstall.Timeout = i.Timeout
@@ -486,7 +531,7 @@ func (i *Install) availableName() error {
 // createRelease creates a new release object
 func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{}) *release.Release {
 	ts := i.cfg.Now()
-	return &release.Release{
+	return release.SetInitPhaseStageInfo(&release.Release{
 		Name:      i.ReleaseName,
 		Namespace: i.Namespace,
 		Chart:     chrt,
@@ -497,7 +542,7 @@ func (i *Install) createRelease(chrt *chart.Chart, rawVals map[string]interface{
 			Status:        release.StatusUnknown,
 		},
 		Version: 1,
-	}
+	})
 }
 
 // recordRelease with an update operation in case reuse has been set.

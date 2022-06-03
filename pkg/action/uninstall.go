@@ -23,9 +23,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/phasemanagers"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	helmtime "helm.sh/helm/v3/pkg/time"
@@ -46,12 +47,19 @@ type Uninstall struct {
 
 	DeleteHooks     bool
 	DeleteNamespace bool
+
+	StagesSplitter stages.Splitter
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
-func NewUninstall(cfg *Configuration) *Uninstall {
+func NewUninstall(cfg *Configuration, stagesSplitter stages.Splitter) *Uninstall {
+	if stagesSplitter == nil {
+		stagesSplitter = stages.SingleStageSplitter{}
+	}
+
 	return &Uninstall{
-		cfg: cfg,
+		cfg:            cfg,
+		StagesSplitter: stagesSplitter,
 	}
 }
 
@@ -111,13 +119,21 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("delete hooks disabled for %s", name)
 	}
 
+	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(rels, u.StagesSplitter, u.cfg.KubeClient)
+	deployedResources, err := deployedResourcesCalculator.Calculate()
+	if err != nil {
+		return nil, fmt.Errorf("error calculating deployed resources: %w", err)
+	}
+
+	release.SetUninstallPhaseStageInfo(rel)
+
 	// From here on out, the release is currently considered to be in StatusUninstalling
 	// state.
 	if err := u.cfg.Releases.Update(rel); err != nil {
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	deletedResources, kept, errs := u.deleteRelease(rel)
+	deletedResources, kept, errs := u.deleteResources(deployedResources)
 
 	if kept != "" {
 		kept = "These resources were kept due to the resource policy:\n" + kept
@@ -205,22 +221,26 @@ func joinErrors(errs []error) string {
 	return strings.Join(es, "; ")
 }
 
-// deleteRelease deletes the release and returns list of delete resources and manifests that were kept in the deletion process
-func (u *Uninstall) deleteRelease(rel *release.Release) (kube.ResourceList, string, []error) {
+func (u *Uninstall) deleteResources(res kube.ResourceList) (kube.ResourceList, string, []error) {
+	manifestsStr, err := res.ToYamlDocs()
+	if err != nil {
+		return nil, "", []error{fmt.Errorf("error converting resource list to yaml manifests: %w", err)}
+	}
+
 	var errs []error
 	caps, err := u.cfg.getCapabilities()
 	if err != nil {
-		return nil, rel.Manifest, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
+		return nil, manifestsStr, []error{errors.Wrap(err, "could not get apiVersions from Kubernetes")}
 	}
 
-	manifests := releaseutil.SplitManifests(rel.Manifest)
+	manifests := releaseutil.SplitManifests(manifestsStr)
 	_, files, err := releaseutil.SortManifests(manifests, caps.APIVersions, releaseutil.UninstallOrder)
 	if err != nil {
 		// We could instead just delete everything in no particular order.
 		// FIXME: One way to delete at this point would be to try a label-based
 		// deletion. The problem with this is that we could get a false positive
 		// and delete something that was not legitimately part of this release.
-		return nil, rel.Manifest, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
+		return nil, manifestsStr, []error{errors.Wrap(err, "corrupted release record. You must manually delete the resources")}
 	}
 
 	filesToKeep, filesToDelete := filterManifestsToKeep(files)

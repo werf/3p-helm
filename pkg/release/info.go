@@ -33,4 +33,7 @@ type Info struct {
 	Status Status `json:"status,omitempty"`
 	// Contains the rendered templates/NOTES.txt if available
 	Notes string `json:"notes,omitempty"`
+
+	LastPhase *Phase `json:"last_phase,omitempty"`
+	LastStage *int   `json:"last_stage,omitempty"`
 }

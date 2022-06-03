@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -52,6 +53,7 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type TemplateCmdOptions struct {
+	StagesSplitter    stages.Splitter
 	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
 	ValueOpts         *values.Options
 	Validate          *bool
@@ -64,7 +66,7 @@ func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOp
 	var validate bool
 	var includeCrds bool
 	var skipTests bool
-	client := action.NewInstall(cfg)
+	client := action.NewInstall(cfg, opts.StagesSplitter)
 	valueOpts := &values.Options{}
 	var kubeVersion string
 	var extraAPIs []string

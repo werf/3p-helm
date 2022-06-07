@@ -46,6 +46,8 @@ type UninstallCmdOptions struct {
 	StagesSplitter  stages.Splitter
 	DeleteNamespace *bool
 	DeleteHooks     *bool
+
+	DontFailIfNoRelease *bool
 }
 
 func NewUninstallCmd(cfg *action.Configuration, out io.Writer, opts UninstallCmdOptions) *cobra.Command {
@@ -67,6 +69,9 @@ func NewUninstallCmd(cfg *action.Configuration, out io.Writer, opts UninstallCmd
 			}
 			if opts.DeleteNamespace != nil {
 				client.DeleteNamespace = *opts.DeleteNamespace
+			}
+			if opts.DontFailIfNoRelease != nil {
+				client.DontFailIfNoRelease = *opts.DontFailIfNoRelease
 			}
 
 			for i := 0; i < len(args); i++ {

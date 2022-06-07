@@ -36,3 +36,11 @@ var (
 
 	LoadPlugins = loadPlugins
 )
+
+func IsPluginError(err error) bool {
+	if err != nil {
+		_, isPluginErr := err.(pluginError)
+		return isPluginErr
+	}
+	return false
+}

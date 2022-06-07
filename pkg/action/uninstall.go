@@ -29,7 +29,9 @@ import (
 	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	helmtime "helm.sh/helm/v3/pkg/time"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // Uninstall is the action for uninstalling releases.
@@ -47,6 +49,8 @@ type Uninstall struct {
 
 	DeleteHooks     bool
 	DeleteNamespace bool
+
+	DontFailIfNoRelease bool
 
 	StagesSplitter stages.Splitter
 }
@@ -72,7 +76,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	if u.DryRun {
 		// In the dry run case, just see if the release exists
 		r, err := u.cfg.releaseContent(name, 0)
-		if err != nil {
+		if apierrors.IsNotFound(err) && u.DontFailIfNoRelease {
+			return &release.UninstallReleaseResponse{}, nil
+		} else if err != nil {
 			return &release.UninstallReleaseResponse{}, err
 		}
 		return &release.UninstallReleaseResponse{Release: r}, nil
@@ -83,7 +89,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	}
 
 	rels, err := u.cfg.Releases.History(name)
-	if err != nil {
+	if errors.Is(err, driver.ErrReleaseNotFound) && u.DontFailIfNoRelease {
+		return &release.UninstallReleaseResponse{}, nil
+	} else if err != nil {
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
 	}
 	if len(rels) < 1 {
@@ -96,6 +104,9 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 	// TODO: Are there any cases where we want to force a delete even if it's
 	// already marked deleted?
 	if rel.Info.Status == release.StatusUninstalled {
+		if u.DontFailIfNoRelease {
+			return &release.UninstallReleaseResponse{Release: rel}, nil
+		}
 		if !u.KeepHistory {
 			if err := u.purgeReleases(rels...); err != nil {
 				return nil, errors.Wrap(err, "uninstall: Failed to purge the release")

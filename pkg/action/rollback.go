@@ -21,14 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/phasemanagers"
-	"helm.sh/helm/v3/pkg/phasemanagers/phases"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
-
 	"github.com/pkg/errors"
-
 	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/phases/phasemanagers"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	"helm.sh/helm/v3/pkg/release"
 	helmtime "helm.sh/helm/v3/pkg/time"
 )
@@ -50,19 +48,19 @@ type Rollback struct {
 	CleanupOnFail bool
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
 
-	StagesSplitter stages.Splitter
+	StagesSplitter phases.Splitter
 
-	StagesExternalDepsGenerator stages.ExternalDepsGenerator
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
-func NewRollback(cfg *Configuration, stagesSplitter stages.Splitter, stagesExternalDepsGenerator stages.ExternalDepsGenerator) *Rollback {
+func NewRollback(cfg *Configuration, stagesSplitter phases.Splitter, stagesExternalDepsGenerator phases.ExternalDepsGenerator) *Rollback {
 	if stagesSplitter == nil {
-		stagesSplitter = &stages.SingleStageSplitter{}
+		stagesSplitter = &phases.SingleStageSplitter{}
 	}
 
 	if stagesExternalDepsGenerator == nil {
-		stagesExternalDepsGenerator = &stages.NoExternalDepsGenerator{}
+		stagesExternalDepsGenerator = &phases.NoExternalDepsGenerator{}
 	}
 
 	return &Rollback{
@@ -174,14 +172,13 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		r.cfg.Log("rollback hooks disabled for %s", targetRelease.Name)
 	}
 
-	history, err := phasemanagers.ReleaseHistoryUntilRevision(targetRelease.Name, targetRelease.Version, r.cfg.Releases)
+	history, err := r.cfg.Releases.HistoryUntilRevision(targetRelease.Name, targetRelease.Version)
 	if err != nil {
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
 		return targetRelease, err
 	}
 
-	rolloutPhase, err := phases.
-		NewRolloutPhase(targetRelease, r.StagesSplitter, r.cfg.KubeClient).
+	rolloutPhase, err := phases.NewRolloutPhase(targetRelease, r.StagesSplitter, r.cfg.KubeClient).
 		ParseStagesFromString(targetRelease.Manifest)
 	if err != nil {
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
@@ -193,10 +190,9 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		return targetRelease, err
 	}
 
-	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(history, r.StagesSplitter, r.cfg.KubeClient)
+	deployedResourcesCalculator := phases.NewDeployedResourcesCalculator(history, r.StagesSplitter, r.cfg.KubeClient)
 
-	rolloutPhaseManager, err := phasemanagers.
-		NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, targetRelease, r.cfg.Releases, r.cfg.KubeClient).
+	rolloutPhaseManager, err := phasemanagers.NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, targetRelease, r.cfg.Releases, r.cfg.KubeClient).
 		AddCalculatedPreviouslyDeployedResources()
 	if err != nil {
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)

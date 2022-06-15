@@ -1,4 +1,4 @@
-package extdeps
+package externaldeps
 
 import (
 	"fmt"

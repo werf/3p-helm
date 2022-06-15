@@ -25,9 +25,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/phasemanagers"
-	"helm.sh/helm/v3/pkg/phasemanagers/phases"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/phases/phasemanagers"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
@@ -107,9 +107,9 @@ type Upgrade struct {
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 
-	StagesSplitter stages.Splitter
+	StagesSplitter phases.Splitter
 
-	StagesExternalDepsGenerator stages.ExternalDepsGenerator
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 type resultMessage struct {
@@ -118,13 +118,13 @@ type resultMessage struct {
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
-func NewUpgrade(cfg *Configuration, stagesSplitter stages.Splitter, stagesExternalDepsGenerator stages.ExternalDepsGenerator) *Upgrade {
+func NewUpgrade(cfg *Configuration, stagesSplitter phases.Splitter, stagesExternalDepsGenerator phases.ExternalDepsGenerator) *Upgrade {
 	if stagesSplitter == nil {
-		stagesSplitter = &stages.SingleStageSplitter{}
+		stagesSplitter = &phases.SingleStageSplitter{}
 	}
 
 	if stagesExternalDepsGenerator == nil {
-		stagesExternalDepsGenerator = &stages.NoExternalDepsGenerator{}
+		stagesExternalDepsGenerator = &phases.NoExternalDepsGenerator{}
 	}
 
 	up := &Upgrade{
@@ -390,15 +390,14 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		u.cfg.Log("upgrade hooks disabled for %s", upgradedRelease.Name)
 	}
 
-	history, err := phasemanagers.ReleaseHistoryUntilRevision(upgradedRelease.Name, upgradedRelease.Version, u.cfg.Releases)
+	history, err := u.cfg.Releases.HistoryUntilRevision(upgradedRelease.Name, upgradedRelease.Version)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error getting release history: %w", err))
 		return
 	}
 
-	rolloutPhase, err := phases.
-		NewRolloutPhase(upgradedRelease, u.StagesSplitter, u.cfg.KubeClient).
+	rolloutPhase, err := phases.NewRolloutPhase(upgradedRelease, u.StagesSplitter, u.cfg.KubeClient).
 		ParseStages(target)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
@@ -412,10 +411,9 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		return
 	}
 
-	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(history, u.StagesSplitter, u.cfg.KubeClient)
+	deployedResourcesCalculator := phases.NewDeployedResourcesCalculator(history, u.StagesSplitter, u.cfg.KubeClient)
 
-	rolloutPhaseManager, err := phasemanagers.
-		NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, upgradedRelease, u.cfg.Releases, u.cfg.KubeClient).
+	rolloutPhaseManager, err := phasemanagers.NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, upgradedRelease, u.cfg.Releases, u.cfg.KubeClient).
 		AddPreviouslyDeployedResources(toBeAdopted).
 		AddCalculatedPreviouslyDeployedResources()
 	if err != nil {

@@ -1,4 +1,4 @@
-package extdeps
+package externaldeps
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"

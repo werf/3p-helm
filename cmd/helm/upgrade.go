@@ -28,8 +28,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
-
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -37,6 +35,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/phases"
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/storage/driver"
 )
@@ -74,7 +73,7 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type UpgradeCmdOptions struct {
-	StagesSplitter    stages.Splitter
+	StagesSplitter    phases.Splitter
 	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
 	ValueOpts         *values.Options
 	CreateNamespace   *bool
@@ -83,7 +82,7 @@ type UpgradeCmdOptions struct {
 	Atomic            *bool
 	Timeout           *time.Duration
 
-	StagesExternalDepsGenerator stages.ExternalDepsGenerator
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {

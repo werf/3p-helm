@@ -1,4 +1,4 @@
-package extdeps
+package externaldeps
 
 import (
 	"helm.sh/helm/v3/pkg/kube"

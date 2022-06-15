@@ -1,20 +1,17 @@
-package stages
+package phases
 
 import (
 	"fmt"
 
 	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	"k8s.io/cli-runtime/pkg/resource"
 )
 
-type Splitter interface {
-	Split(resources kube.ResourceList) (SortedStageList, error)
-}
-
 type SingleStageSplitter struct{}
 
-func (s *SingleStageSplitter) Split(resources kube.ResourceList) (SortedStageList, error) {
-	stage := &Stage{}
+func (s *SingleStageSplitter) Split(resources kube.ResourceList) (stages.SortedStageList, error) {
+	stage := &stages.Stage{}
 
 	if err := resources.Visit(func(res *resource.Info, err error) error {
 		if err != nil {
@@ -28,5 +25,5 @@ func (s *SingleStageSplitter) Split(resources kube.ResourceList) (SortedStageLis
 		return nil, fmt.Errorf("error visiting resources list: %w", err)
 	}
 
-	return SortedStageList{stage}, nil
+	return stages.SortedStageList{stage}, nil
 }

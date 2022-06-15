@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	rel "helm.sh/helm/v3/pkg/release"
-	"k8s.io/cli-runtime/pkg/resource"
 )
 
-func NewRolloutPhase(release *rel.Release, stagesSplitter stages.Splitter, kubeClient kube.Interface) *RolloutPhase {
+func NewRolloutPhase(release *rel.Release, stagesSplitter Splitter, kubeClient kube.Interface) *RolloutPhase {
 	return &RolloutPhase{
 		Release:        release,
 		stagesSplitter: stagesSplitter,
@@ -22,7 +21,7 @@ type RolloutPhase struct {
 	SortedStages stages.SortedStageList
 	Release      *rel.Release
 
-	stagesSplitter stages.Splitter
+	stagesSplitter Splitter
 	kubeClient     kube.Interface
 }
 
@@ -45,7 +44,7 @@ func (m *RolloutPhase) ParseStages(resources kube.ResourceList) (*RolloutPhase, 
 	return m, nil
 }
 
-func (m *RolloutPhase) GenerateStagesExternalDeps(stagesExternalDepsGenerator stages.ExternalDepsGenerator) error {
+func (m *RolloutPhase) GenerateStagesExternalDeps(stagesExternalDepsGenerator ExternalDepsGenerator) error {
 	if err := stagesExternalDepsGenerator.Generate(m.SortedStages); err != nil {
 		return fmt.Errorf("error generating external deps for stages: %w", err)
 	}
@@ -127,23 +126,12 @@ func (m *RolloutPhase) validateStagesExternalDeps() error {
 	for _, stage := range m.SortedStages {
 		for _, stageExtDep := range stage.ExternalDependencies {
 			for _, phaseDesiredRes := range phaseDesiredResources {
-				if SameResources(stageExtDep.Info, phaseDesiredRes) {
-					return fmt.Errorf("resources from current release can't be external dependencies: remove external dependency on %q", ResourceNameNamespaceGroupKind(stageExtDep.Info))
+				if kube.SameResources(stageExtDep.Info, phaseDesiredRes) {
+					return fmt.Errorf("resources from current release can't be external dependencies: remove external dependency on %q", kube.ResourceNameNamespaceGroupKind(stageExtDep.Info))
 				}
 			}
 		}
 	}
 
 	return nil
-}
-
-// FIXME(ilya-lesikov): move to some utils
-func ResourceNameNamespaceGroupKind(info *resource.Info) string {
-	return fmt.Sprint(info.Namespace, ":", info.Object.GetObjectKind().GroupVersionKind().GroupKind().String(), "/", info.Name)
-}
-
-// FIXME(ilya-lesikov): move to some utils
-// Match by name, namespace, group, kind.
-func SameResources(info1, info2 *resource.Info) bool {
-	return ResourceNameNamespaceGroupKind(info1) == ResourceNameNamespaceGroupKind(info2)
 }

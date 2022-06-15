@@ -44,3 +44,10 @@ func IsPluginError(err error) bool {
 	}
 	return false
 }
+
+func PluginErrorCode(err error) int {
+	if pluginErr, ok := err.(pluginError); ok {
+		return pluginErr.code
+	}
+	return 0
+}

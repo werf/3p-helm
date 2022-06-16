@@ -7,12 +7,14 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 	rel "helm.sh/helm/v3/pkg/release"
+	"k8s.io/cli-runtime/pkg/resource"
 )
 
-func NewRolloutPhase(release *rel.Release, stagesSplitter stages.Splitter) *RolloutPhase {
+func NewRolloutPhase(release *rel.Release, stagesSplitter stages.Splitter, kubeClient kube.Interface) *RolloutPhase {
 	return &RolloutPhase{
 		Release:        release,
 		stagesSplitter: stagesSplitter,
+		kubeClient:     kubeClient,
 	}
 }
 
@@ -21,10 +23,11 @@ type RolloutPhase struct {
 	Release      *rel.Release
 
 	stagesSplitter stages.Splitter
+	kubeClient     kube.Interface
 }
 
-func (m *RolloutPhase) ParseStagesFromString(manifests string, kubeClient kube.Interface) (*RolloutPhase, error) {
-	resources, err := kubeClient.Build(bytes.NewBufferString(manifests), false)
+func (m *RolloutPhase) ParseStagesFromString(manifests string) (*RolloutPhase, error) {
+	resources, err := m.kubeClient.Build(bytes.NewBufferString(manifests), false)
 	if err != nil {
 		return nil, fmt.Errorf("error building kubernetes objects from manifests: %w", err)
 	}
@@ -40,6 +43,18 @@ func (m *RolloutPhase) ParseStages(resources kube.ResourceList) (*RolloutPhase, 
 	}
 
 	return m, nil
+}
+
+func (m *RolloutPhase) GenerateStagesExternalDeps(stagesExternalDepsGenerator stages.ExternalDepsGenerator) error {
+	if err := stagesExternalDepsGenerator.Generate(m.SortedStages); err != nil {
+		return fmt.Errorf("error generating external deps for stages: %w", err)
+	}
+
+	if err := m.validateStagesExternalDeps(); err != nil {
+		return fmt.Errorf("error validating external deps: %w", err)
+	}
+
+	return nil
 }
 
 func (m *RolloutPhase) DeployedResources() kube.ResourceList {
@@ -104,4 +119,31 @@ func (m *RolloutPhase) IsPhaseCompleted() bool {
 	default:
 		return false
 	}
+}
+
+func (m *RolloutPhase) validateStagesExternalDeps() error {
+	phaseDesiredResources := m.SortedStages.MergedDesiredResources()
+
+	for _, stage := range m.SortedStages {
+		for _, stageExtDep := range stage.ExternalDependencies {
+			for _, phaseDesiredRes := range phaseDesiredResources {
+				if SameResources(stageExtDep.Info, phaseDesiredRes) {
+					return fmt.Errorf("resources from current release can't be external dependencies: remove external dependency on %q", ResourceNameNamespaceGroupKind(stageExtDep.Info))
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// FIXME(ilya-lesikov): move to some utils
+func ResourceNameNamespaceGroupKind(info *resource.Info) string {
+	return fmt.Sprint(info.Namespace, ":", info.Object.GetObjectKind().GroupVersionKind().GroupKind().String(), "/", info.Name)
+}
+
+// FIXME(ilya-lesikov): move to some utils
+// Match by name, namespace, group, kind.
+func SameResources(info1, info2 *resource.Info) bool {
+	return ResourceNameNamespaceGroupKind(info1) == ResourceNameNamespaceGroupKind(info2)
 }

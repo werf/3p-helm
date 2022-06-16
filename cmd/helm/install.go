@@ -124,10 +124,12 @@ type InstallCmdOptions struct {
 	Wait              *bool
 	Atomic            *bool
 	Timeout           *time.Duration
+
+	StagesExternalDepsGenerator stages.ExternalDepsGenerator
 }
 
 func NewInstallCmd(cfg *action.Configuration, out io.Writer, opts InstallCmdOptions) (*cobra.Command, *action.Install) {
-	client := action.NewInstall(cfg, opts.StagesSplitter)
+	client := action.NewInstall(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 

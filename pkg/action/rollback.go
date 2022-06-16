@@ -51,17 +51,25 @@ type Rollback struct {
 	MaxHistory    int // MaxHistory limits the maximum number of revisions saved per release
 
 	StagesSplitter stages.Splitter
+
+	StagesExternalDepsGenerator stages.ExternalDepsGenerator
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
-func NewRollback(cfg *Configuration, stagesSplitter stages.Splitter) *Rollback {
+func NewRollback(cfg *Configuration, stagesSplitter stages.Splitter, stagesExternalDepsGenerator stages.ExternalDepsGenerator) *Rollback {
 	if stagesSplitter == nil {
-		stagesSplitter = stages.SingleStageSplitter{}
+		stagesSplitter = &stages.SingleStageSplitter{}
+	}
+
+	if stagesExternalDepsGenerator == nil {
+		stagesExternalDepsGenerator = &stages.NoExternalDepsGenerator{}
 	}
 
 	return &Rollback{
 		cfg:            cfg,
 		StagesSplitter: stagesSplitter,
+
+		StagesExternalDepsGenerator: stagesExternalDepsGenerator,
 	}
 }
 
@@ -173,9 +181,14 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	rolloutPhase, err := phases.
-		NewRolloutPhase(targetRelease, r.StagesSplitter).
-		ParseStagesFromString(targetRelease.Manifest, r.cfg.KubeClient)
+		NewRolloutPhase(targetRelease, r.StagesSplitter, r.cfg.KubeClient).
+		ParseStagesFromString(targetRelease.Manifest)
 	if err != nil {
+		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
+		return targetRelease, err
+	}
+
+	if err := rolloutPhase.GenerateStagesExternalDeps(r.StagesExternalDepsGenerator); err != nil {
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
 		return targetRelease, err
 	}
@@ -192,6 +205,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 	if err := rolloutPhaseManager.DoStage(
 		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			if len(stage.ExternalDependencies) > 0 && r.Wait {
+				if r.WaitForJobs {
+					if err := r.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), r.Timeout); err != nil {
+						return err
+					}
+				} else {
+					if err := r.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), r.Timeout); err != nil {
+						return err
+					}
+				}
+			}
+
 			if len(prevDeployedStgResources) == 0 {
 				stage.Result, err = r.cfg.KubeClient.Create(stage.DesiredResources)
 				if err != nil {

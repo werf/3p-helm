@@ -60,13 +60,15 @@ type TemplateCmdOptions struct {
 	IncludeCrds       *bool
 	IsUpgrade         *bool
 	ShowFiles         *[]string
+
+	StagesExternalDepsGenerator stages.ExternalDepsGenerator
 }
 
 func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOptions) (*cobra.Command, *action.Install) {
 	var validate bool
 	var includeCrds bool
 	var skipTests bool
-	client := action.NewInstall(cfg, opts.StagesSplitter)
+	client := action.NewInstall(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 	valueOpts := &values.Options{}
 	var kubeVersion string
 	var extraAPIs []string

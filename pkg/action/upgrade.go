@@ -108,6 +108,8 @@ type Upgrade struct {
 	Lock sync.Mutex
 
 	StagesSplitter stages.Splitter
+
+	StagesExternalDepsGenerator stages.ExternalDepsGenerator
 }
 
 type resultMessage struct {
@@ -116,14 +118,20 @@ type resultMessage struct {
 }
 
 // NewUpgrade creates a new Upgrade object with the given configuration.
-func NewUpgrade(cfg *Configuration, stagesSplitter stages.Splitter) *Upgrade {
+func NewUpgrade(cfg *Configuration, stagesSplitter stages.Splitter, stagesExternalDepsGenerator stages.ExternalDepsGenerator) *Upgrade {
 	if stagesSplitter == nil {
-		stagesSplitter = stages.SingleStageSplitter{}
+		stagesSplitter = &stages.SingleStageSplitter{}
+	}
+
+	if stagesExternalDepsGenerator == nil {
+		stagesExternalDepsGenerator = &stages.NoExternalDepsGenerator{}
 	}
 
 	up := &Upgrade{
 		cfg:            cfg,
 		StagesSplitter: stagesSplitter,
+
+		StagesExternalDepsGenerator: stagesExternalDepsGenerator,
 	}
 	up.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -390,11 +398,17 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	rolloutPhase, err := phases.
-		NewRolloutPhase(upgradedRelease, u.StagesSplitter).
+		NewRolloutPhase(upgradedRelease, u.StagesSplitter, u.cfg.KubeClient).
 		ParseStages(target)
 	if err != nil {
 		u.cfg.recordRelease(originalRelease)
 		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error parsing stages for rollout phase: %w", err))
+		return
+	}
+
+	if err := rolloutPhase.GenerateStagesExternalDeps(u.StagesExternalDepsGenerator); err != nil {
+		u.cfg.recordRelease(originalRelease)
+		u.reportToPerformUpgrade(c, upgradedRelease, kube.ResourceList{}, fmt.Errorf("error generating external deps for rollout phase: %w", err))
 		return
 	}
 
@@ -412,6 +426,18 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 
 	if err := rolloutPhaseManager.DoStage(
 		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			if len(stage.ExternalDependencies) > 0 && u.Wait {
+				if u.WaitForJobs {
+					if err := u.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), u.Timeout); err != nil {
+						return err
+					}
+				} else {
+					if err := u.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), u.Timeout); err != nil {
+						return err
+					}
+				}
+			}
+
 			if len(prevDeployedStgResources) == 0 {
 				stage.Result, err = u.cfg.KubeClient.Create(stage.DesiredResources)
 				if err != nil {
@@ -520,7 +546,7 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 
 		releaseutil.Reverse(filteredHistory, releaseutil.SortByRevision)
 
-		rollin := NewRollback(u.cfg, u.StagesSplitter)
+		rollin := NewRollback(u.cfg, u.StagesSplitter, u.StagesExternalDepsGenerator)
 		rollin.Version = filteredHistory[0].Version
 		rollin.Wait = true
 		rollin.WaitForJobs = u.WaitForJobs

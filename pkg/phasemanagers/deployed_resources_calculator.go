@@ -47,8 +47,8 @@ func (c *DeployedResourcesCalculator) Calculate() (kube.ResourceList, error) {
 			rel.StatusPendingRollback,
 			rel.StatusUninstalling:
 			mainPhase, err := phases.
-				NewRolloutPhase(release, c.stagesSplitter).
-				ParseStagesFromString(release.Manifest, c.kubeClient)
+				NewRolloutPhase(release, c.stagesSplitter, c.kubeClient).
+				ParseStagesFromString(release.Manifest)
 			if err != nil {
 				return nil, fmt.Errorf("error creating main phase: %w", err)
 			}

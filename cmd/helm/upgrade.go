@@ -82,10 +82,12 @@ type UpgradeCmdOptions struct {
 	Wait              *bool
 	Atomic            *bool
 	Timeout           *time.Duration
+
+	StagesExternalDepsGenerator stages.ExternalDepsGenerator
 }
 
 func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {
-	client := action.NewUpgrade(cfg, opts.StagesSplitter)
+	client := action.NewUpgrade(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool
@@ -143,7 +145,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 					if outfmt == output.Table {
 						fmt.Fprintf(out, "Release %q does not exist. Installing it now.\n", args[0])
 					}
-					instClient := action.NewInstall(cfg, opts.StagesSplitter)
+					instClient := action.NewInstall(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 					instClient.CreateNamespace = createNamespace
 					instClient.ChartPathOptions = client.ChartPathOptions
 					instClient.DryRun = client.DryRun

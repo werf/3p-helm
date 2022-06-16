@@ -41,6 +41,8 @@ To see revision numbers, run 'helm history RELEASE'.
 
 type RollbackCmdOptions struct {
 	StagesSplitter stages.Splitter
+
+	StagesExternalDepsGenerator stages.ExternalDepsGenerator
 }
 
 func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -49,7 +51,7 @@ func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOptions) *cobra.Command {
-	client := action.NewRollback(cfg, opts.StagesSplitter)
+	client := action.NewRollback(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 
 	cmd := &cobra.Command{
 		Use:   "rollback <RELEASE> [REVISION]",

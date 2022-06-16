@@ -34,7 +34,7 @@ import (
 
 func upgradeAction(t *testing.T) *Upgrade {
 	config := actionConfigFixture(t)
-	upAction := NewUpgrade(config, nil)
+	upAction := NewUpgrade(config, nil, nil)
 	upAction.Namespace = "spaced"
 
 	return upAction

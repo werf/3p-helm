@@ -58,7 +58,7 @@ type Uninstall struct {
 // NewUninstall creates a new Uninstall object with the given configuration.
 func NewUninstall(cfg *Configuration, stagesSplitter stages.Splitter) *Uninstall {
 	if stagesSplitter == nil {
-		stagesSplitter = stages.SingleStageSplitter{}
+		stagesSplitter = &stages.SingleStageSplitter{}
 	}
 
 	return &Uninstall{

@@ -2,15 +2,16 @@ package phasemanagers
 
 import (
 	"fmt"
+	"strings"
 
 	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/phasemanagers/phases"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	rel "helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage"
 )
 
-func NewRolloutPhaseManager(rolloutPhase *phases.RolloutPhase, deployedResCalc *DeployedResourcesCalculator, release *rel.Release, storage *storage.Storage, kubeClient kube.Interface) *RolloutPhaseManager {
+func NewRolloutPhaseManager(rolloutPhase *phases.RolloutPhase, deployedResCalc *phases.DeployedResourcesCalculator, release *rel.Release, storage *storage.Storage, kubeClient kube.Interface) *RolloutPhaseManager {
 	return &RolloutPhaseManager{
 		Phase:                       rolloutPhase,
 		Release:                     release,
@@ -25,7 +26,7 @@ type RolloutPhaseManager struct {
 	Release *rel.Release
 	Storage *storage.Storage
 
-	deployedResourcesCalculator *DeployedResourcesCalculator
+	deployedResourcesCalculator *phases.DeployedResourcesCalculator
 	previouslyDeployedResources kube.ResourceList
 	kubeClient                  kube.Interface
 }
@@ -70,4 +71,13 @@ func (m *RolloutPhaseManager) DeleteOrphanedResources() error {
 	}
 
 	return nil
+}
+
+func joinErrors(errs []error) string {
+	es := make([]string, 0, len(errs))
+	for _, e := range errs {
+		es = append(es, e.Error())
+	}
+
+	return strings.Join(es, "; ")
 }

@@ -8,8 +8,8 @@ import (
 )
 
 type ResourcesWaiter interface {
-	Wait(ctx context.Context, namespace string, resources ResourceList, timeout time.Duration) error
-	WatchUntilReady(ctx context.Context, namespace string, resources ResourceList, timeout time.Duration) error
+	Wait(ctx context.Context, resources ResourceList, timeout time.Duration) error
+	WatchUntilReady(ctx context.Context, resources ResourceList, timeout time.Duration) error
 	WaitUntilDeleted(ctx context.Context, specs []*ResourcesWaiterDeleteResourceSpec, timeout time.Duration) error
 }
 

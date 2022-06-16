@@ -26,12 +26,11 @@ import (
 	"syscall"
 	"time"
 
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
-	"helm.sh/helm/v3/pkg/postrender"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/postrender"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -117,17 +116,19 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type InstallCmdOptions struct {
-	StagesSplitter    stages.Splitter
+	StagesSplitter    phases.Splitter
 	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
 	ValueOpts         *values.Options
 	CreateNamespace   *bool
 	Wait              *bool
 	Atomic            *bool
 	Timeout           *time.Duration
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 func NewInstallCmd(cfg *action.Configuration, out io.Writer, opts InstallCmdOptions) (*cobra.Command, *action.Install) {
-	client := action.NewInstall(cfg, opts.StagesSplitter)
+	client := action.NewInstall(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 

@@ -34,7 +34,6 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -158,7 +157,7 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 	if c.ResourcesWaiter != nil {
-		return c.ResourcesWaiter.Wait(context.Background(), c.Namespace, resources, timeout)
+		return c.ResourcesWaiter.Wait(context.Background(), resources, timeout)
 	}
 
 	cs, err := c.getKubeClient()
@@ -424,7 +423,7 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
 	if c.ResourcesWaiter != nil {
-		return c.ResourcesWaiter.WatchUntilReady(context.Background(), c.Namespace, resources, timeout)
+		return c.ResourcesWaiter.WatchUntilReady(context.Background(), resources, timeout)
 	}
 
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():

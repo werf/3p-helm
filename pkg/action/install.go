@@ -32,9 +32,9 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
-	"helm.sh/helm/v3/pkg/phasemanagers"
-	"helm.sh/helm/v3/pkg/phasemanagers/phases"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/phases/phasemanagers"
+	"helm.sh/helm/v3/pkg/phases/stages"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,9 +103,11 @@ type Install struct {
 	// OutputDir/<ReleaseName>
 	UseReleaseName bool
 	PostRenderer   postrender.PostRenderer
-	StagesSplitter stages.Splitter
+	StagesSplitter phases.Splitter
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -128,14 +130,20 @@ type ChartPathOptions struct {
 }
 
 // NewInstall creates a new Install object with the given configuration.
-func NewInstall(cfg *Configuration, stagesSplitter stages.Splitter) *Install {
+func NewInstall(cfg *Configuration, stagesSplitter phases.Splitter, stagesExternalDepsGenerator phases.ExternalDepsGenerator) *Install {
 	if stagesSplitter == nil {
-		stagesSplitter = stages.SingleStageSplitter{}
+		stagesSplitter = &phases.SingleStageSplitter{}
+	}
+
+	if stagesExternalDepsGenerator == nil {
+		stagesExternalDepsGenerator = &phases.NoExternalDepsGenerator{}
 	}
 
 	in := &Install{
 		cfg:            cfg,
 		StagesSplitter: stagesSplitter,
+
+		StagesExternalDepsGenerator: stagesExternalDepsGenerator,
 	}
 	in.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -372,24 +380,27 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		}
 	}
 
-	history, err := phasemanagers.ReleaseHistoryUntilRevision(rel.Name, rel.Version, i.cfg.Releases)
+	history, err := i.cfg.Releases.HistoryUntilRevision(rel.Name, rel.Version)
 	if err != nil {
 		i.reportToRun(c, rel, fmt.Errorf("error getting release history: %w", err))
 		return
 	}
 
-	rolloutPhase, err := phases.
-		NewRolloutPhase(rel, i.StagesSplitter).
+	rolloutPhase, err := phases.NewRolloutPhase(rel, i.StagesSplitter, i.cfg.KubeClient).
 		ParseStages(resources)
 	if err != nil {
 		i.reportToRun(c, rel, fmt.Errorf("error parsing stages for rollout phase: %w", err))
 		return
 	}
 
-	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(history, i.StagesSplitter, i.cfg.KubeClient)
+	if err := rolloutPhase.GenerateStagesExternalDeps(i.StagesExternalDepsGenerator); err != nil {
+		i.reportToRun(c, rel, fmt.Errorf("error generating external deps for rollout phase: %w", err))
+		return
+	}
 
-	rolloutPhaseManager, err := phasemanagers.
-		NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, rel, i.cfg.Releases, i.cfg.KubeClient).
+	deployedResourcesCalculator := phases.NewDeployedResourcesCalculator(history, i.StagesSplitter, i.cfg.KubeClient)
+
+	rolloutPhaseManager, err := phasemanagers.NewRolloutPhaseManager(rolloutPhase, deployedResourcesCalculator, rel, i.cfg.Releases, i.cfg.KubeClient).
 		AddPreviouslyDeployedResources(toBeAdopted).
 		AddCalculatedPreviouslyDeployedResources()
 	if err != nil {
@@ -399,6 +410,18 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 
 	if err := rolloutPhaseManager.DoStage(
 		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
+			if len(stage.ExternalDependencies) > 0 && i.Wait {
+				if i.WaitForJobs {
+					if err := i.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), i.Timeout); err != nil {
+						return err
+					}
+				} else {
+					if err := i.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), i.Timeout); err != nil {
+						return err
+					}
+				}
+			}
+
 			// At this point, we can do the install. Note that before we were detecting whether to
 			// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 			// to true, since that is basically an upgrade operation.

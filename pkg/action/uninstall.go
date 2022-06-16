@@ -25,8 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/phasemanagers"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
+	"helm.sh/helm/v3/pkg/phases"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -52,13 +51,13 @@ type Uninstall struct {
 
 	DontFailIfNoRelease bool
 
-	StagesSplitter stages.Splitter
+	StagesSplitter phases.Splitter
 }
 
 // NewUninstall creates a new Uninstall object with the given configuration.
-func NewUninstall(cfg *Configuration, stagesSplitter stages.Splitter) *Uninstall {
+func NewUninstall(cfg *Configuration, stagesSplitter phases.Splitter) *Uninstall {
 	if stagesSplitter == nil {
-		stagesSplitter = stages.SingleStageSplitter{}
+		stagesSplitter = &phases.SingleStageSplitter{}
 	}
 
 	return &Uninstall{
@@ -130,7 +129,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("delete hooks disabled for %s", name)
 	}
 
-	deployedResourcesCalculator := phasemanagers.NewDeployedResourcesCalculator(rels, u.StagesSplitter, u.cfg.KubeClient)
+	deployedResourcesCalculator := phases.NewDeployedResourcesCalculator(rels, u.StagesSplitter, u.cfg.KubeClient)
 	deployedResources, err := deployedResourcesCalculator.Calculate()
 	if err != nil {
 		return nil, fmt.Errorf("error calculating deployed resources: %w", err)

@@ -23,10 +23,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
-
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/phases"
 )
 
 const rollbackDesc = `
@@ -40,7 +39,9 @@ To see revision numbers, run 'helm history RELEASE'.
 `
 
 type RollbackCmdOptions struct {
-	StagesSplitter stages.Splitter
+	StagesSplitter phases.Splitter
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -49,7 +50,7 @@ func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOptions) *cobra.Command {
-	client := action.NewRollback(cfg, opts.StagesSplitter)
+	client := action.NewRollback(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 
 	cmd := &cobra.Command{
 		Use:   "rollback <RELEASE> [REVISION]",

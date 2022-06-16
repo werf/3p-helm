@@ -1,16 +1,14 @@
-package phasemanagers
+package phases
 
 import (
 	"fmt"
 	"math"
 
 	"helm.sh/helm/v3/pkg/kube"
-	"helm.sh/helm/v3/pkg/phasemanagers/phases"
-	"helm.sh/helm/v3/pkg/phasemanagers/stages"
 	rel "helm.sh/helm/v3/pkg/release"
 )
 
-func NewDeployedResourcesCalculator(history []*rel.Release, stagesSplitter stages.Splitter, kubeClient kube.Interface) *DeployedResourcesCalculator {
+func NewDeployedResourcesCalculator(history []*rel.Release, stagesSplitter Splitter, kubeClient kube.Interface) *DeployedResourcesCalculator {
 	return &DeployedResourcesCalculator{
 		history:        history,
 		stagesSplitter: stagesSplitter,
@@ -20,7 +18,7 @@ func NewDeployedResourcesCalculator(history []*rel.Release, stagesSplitter stage
 
 type DeployedResourcesCalculator struct {
 	history        []*rel.Release
-	stagesSplitter stages.Splitter
+	stagesSplitter Splitter
 	kubeClient     kube.Interface
 }
 
@@ -46,9 +44,8 @@ func (c *DeployedResourcesCalculator) Calculate() (kube.ResourceList, error) {
 			rel.StatusPendingUpgrade,
 			rel.StatusPendingRollback,
 			rel.StatusUninstalling:
-			mainPhase, err := phases.
-				NewRolloutPhase(release, c.stagesSplitter).
-				ParseStagesFromString(release.Manifest, c.kubeClient)
+			mainPhase, err := NewRolloutPhase(release, c.stagesSplitter, c.kubeClient).
+				ParseStagesFromString(release.Manifest)
 			if err != nil {
 				return nil, fmt.Errorf("error creating main phase: %w", err)
 			}

@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	rspb "helm.sh/helm/v3/pkg/release"
 	relutil "helm.sh/helm/v3/pkg/releaseutil"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -154,6 +153,25 @@ func (s *Storage) History(name string) ([]*rspb.Release, error) {
 	s.Log("getting release history for %q", name)
 
 	return s.Driver.Query(map[string]string{"name": name, "owner": "helm"})
+}
+
+func (s *Storage) HistoryUntilRevision(name string, ignoreSinceRevision int) ([]*rspb.Release, error) {
+	history, err := s.History(name)
+	if err != nil {
+		return nil, fmt.Errorf("error getting release history: %w", err)
+	}
+
+	relutil.SortByRevision(history)
+
+	resultLength := len(history)
+	for i, release := range history {
+		if release.Version == ignoreSinceRevision {
+			resultLength = i
+			break
+		}
+	}
+
+	return history[:resultLength], nil
 }
 
 // removeLeastRecent removes items from history until the length number of releases

@@ -81,12 +81,21 @@ type UpgradeCmdOptions struct {
 	Wait              *bool
 	Atomic            *bool
 	Timeout           *time.Duration
+	IgnorePending     *bool
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
 
 func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOptions) (*cobra.Command, *action.Upgrade) {
-	client := action.NewUpgrade(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
+	upgradeOpts := action.UpgradeOptions{
+		StagesSplitter:              opts.StagesSplitter,
+		StagesExternalDepsGenerator: opts.StagesExternalDepsGenerator,
+	}
+	if opts.IgnorePending != nil {
+		upgradeOpts.IgnorePending = *opts.IgnorePending
+	}
+
+	client := action.NewUpgrade(cfg, upgradeOpts)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 	var createNamespace bool

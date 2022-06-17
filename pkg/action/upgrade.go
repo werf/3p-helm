@@ -107,9 +107,10 @@ type Upgrade struct {
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 
-	StagesSplitter phases.Splitter
-
+	StagesSplitter              phases.Splitter
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	IgnorePending bool
 }
 
 type resultMessage struct {
@@ -117,21 +118,31 @@ type resultMessage struct {
 	e error
 }
 
+type UpgradeOptions struct {
+	StagesSplitter              phases.Splitter
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	IgnorePending bool
+}
+
 // NewUpgrade creates a new Upgrade object with the given configuration.
-func NewUpgrade(cfg *Configuration, stagesSplitter phases.Splitter, stagesExternalDepsGenerator phases.ExternalDepsGenerator) *Upgrade {
+func NewUpgrade(cfg *Configuration, opts UpgradeOptions) *Upgrade {
+	stagesSplitter := opts.StagesSplitter
 	if stagesSplitter == nil {
 		stagesSplitter = &phases.SingleStageSplitter{}
 	}
 
+	stagesExternalDepsGenerator := opts.StagesExternalDepsGenerator
 	if stagesExternalDepsGenerator == nil {
 		stagesExternalDepsGenerator = &phases.NoExternalDepsGenerator{}
 	}
 
 	up := &Upgrade{
-		cfg:            cfg,
-		StagesSplitter: stagesSplitter,
+		cfg: cfg,
 
+		StagesSplitter:              stagesSplitter,
 		StagesExternalDepsGenerator: stagesExternalDepsGenerator,
+		IgnorePending:               opts.IgnorePending,
 	}
 	up.ChartPathOptions.registryClient = cfg.RegistryClient
 
@@ -198,8 +209,8 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	}
 
 	// Concurrent `helm upgrade`s will either fail here with `errPending` or when creating the release with "already exists". This should act as a pessimistic lock.
-	if lastRelease.Info.Status.IsPending() {
-		// return nil, nil, errPending
+	if !u.IgnorePending && lastRelease.Info.Status.IsPending() {
+		return nil, nil, errPending
 	}
 
 	isUpgrade := true

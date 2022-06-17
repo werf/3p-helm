@@ -56,6 +56,10 @@ func convertChartExtenderFilesToBufferedFiles(files []*chart.ChartExtenderBuffer
 
 var GlobalLoadOptions *LoadOptions
 
+func init() {
+	GlobalLoadOptions = &LoadOptions{}
+}
+
 // ChartLoader loads a chart.
 type ChartLoader interface {
 	Load(options LoadOptions) (*chart.Chart, error)

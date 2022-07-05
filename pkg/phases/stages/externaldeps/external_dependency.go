@@ -25,22 +25,30 @@ type ExternalDependency struct {
 	Info      *resource.Info
 }
 
-func (d *ExternalDependency) GenerateInfo(gvkBuilder GVKBuilder, metaAccessor meta.MetadataAccessor) error {
+func (d *ExternalDependency) GenerateInfo(gvkBuilder GVKBuilder, metaAccessor meta.MetadataAccessor, mapper meta.RESTMapper) error {
 	gvk, err := gvkBuilder.BuildFromResource(d.ResourceType)
 	if err != nil {
 		return fmt.Errorf("error building GroupVersionKind from resource type: %w", err)
 	}
 
-	object := unstructured.Unstructured{}
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return fmt.Errorf("error getting resource mapping: %w", err)
+	}
 
+	object := unstructured.Unstructured{}
 	object.SetGroupVersionKind(*gvk)
 	object.SetName(d.ResourceName)
-	object.SetNamespace(d.Namespace)
 
 	d.Info = &resource.Info{
-		Object:    &object,
-		Name:      d.ResourceName,
-		Namespace: d.Namespace,
+		Mapping: mapping,
+		Object:  &object,
+		Name:    d.ResourceName,
+	}
+
+	if d.Info.Namespaced() {
+		d.Info.Namespace = d.Namespace
+		d.Info.Object.(*unstructured.Unstructured).SetNamespace(d.Namespace)
 	}
 
 	return nil

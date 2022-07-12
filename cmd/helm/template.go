@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli/values"
+	"helm.sh/helm/v3/pkg/errs"
 	"helm.sh/helm/v3/pkg/phases"
 	"helm.sh/helm/v3/pkg/postrender"
 	"helm.sh/helm/v3/pkg/release"
@@ -118,6 +119,7 @@ func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOp
 			client.APIVersions = chartutil.VersionSet(extraAPIs)
 			client.IncludeCRDs = includeCrds
 			rel, err := runInstall(args, client, valueOpts, out)
+			err = errs.FormatTemplatingError(err)
 
 			if err != nil && !settings.Debug {
 				if rel != nil {

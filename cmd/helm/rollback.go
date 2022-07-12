@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/errs"
 	"helm.sh/helm/v3/pkg/phases"
 )
 
@@ -78,7 +79,7 @@ func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOp
 			}
 
 			if err := client.Run(args[0]); err != nil {
-				return err
+				return errs.FormatTemplatingError(err)
 			}
 
 			fmt.Fprintf(out, "Rollback was a success! Happy Helming!\n")

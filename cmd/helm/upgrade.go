@@ -34,6 +34,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli/output"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/errs"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/phases"
 	"helm.sh/helm/v3/pkg/postrender"
@@ -172,7 +173,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
-						return err
+						return errs.FormatTemplatingError(err)
 					}
 					return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})
 				} else if err != nil {
@@ -262,7 +263,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 
 			rel, err := client.RunWithContext(ctx, args[0], ch, vals)
 			if err != nil {
-				return errors.Wrap(err, "UPGRADE FAILED")
+				return errors.Wrap(errs.FormatTemplatingError(err), "UPGRADE FAILED")
 			}
 
 			if outfmt == output.Table {

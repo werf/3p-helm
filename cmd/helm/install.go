@@ -29,6 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/errs"
 	"helm.sh/helm/v3/pkg/phases"
 	"helm.sh/helm/v3/pkg/postrender"
 
@@ -165,7 +166,7 @@ func NewInstallCmd(cfg *action.Configuration, out io.Writer, opts InstallCmdOpti
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return errors.Wrap(err, "INSTALLATION FAILED")
+				return errors.Wrap(errs.FormatTemplatingError(err), "INSTALLATION FAILED")
 			}
 
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false})

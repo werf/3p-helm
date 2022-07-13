@@ -126,6 +126,11 @@ func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender) {
 
 	// Add the 'tpl' function here
 	funcMap["tpl"] = func(tpl string, vals chartutil.Values) (string, error) {
+		// No templating required if plain text with no templates passed.
+		if !strings.Contains(tpl, "{{") && !strings.Contains(tpl, "}}") {
+			return tpl, nil
+		}
+
 		basePath, err := vals.PathValue("Template.BasePath")
 		if err != nil {
 			return "", errors.Wrapf(err, "cannot retrieve Template.Basepath from values inside tpl function: %s", tpl)

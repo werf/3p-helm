@@ -104,7 +104,7 @@ func warnWrap(warn string) string {
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]renderable, extender chart.ChartExtender) {
+func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -144,7 +144,12 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 			},
 		}
 
-		result, err := e.renderWithReferences(templates, referenceTpls, extender)
+		clone, err := t.Clone()
+		if err != nil {
+			return "", errors.Errorf("clone template failed: %v", err)
+		}
+
+		result, err := e.renderWithTemplate(clone, templates, extender)
 		if err != nil {
 			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
 		}
@@ -198,12 +203,21 @@ func (e Engine) initFunMap(t *template.Template, referenceTpls map[string]render
 
 // render takes a map of templates/values and renders them.
 func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender) (map[string]string, error) {
-	return e.renderWithReferences(tpls, tpls, extender)
+	t := template.New("gotpl")
+	if e.Strict {
+		t.Option("missingkey=error")
+	} else {
+		// Not that zero will attempt to add default values for types it knows,
+		// but will still emit <no value> for others. We mitigate that later.
+		t.Option("missingkey=zero")
+	}
+
+	return e.renderWithTemplate(t, tpls, extender)
 }
 
 // renderWithReferences takes a map of templates/values to render, and a map of
 // templates which can be referenced within them.
-func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable, extender chart.ChartExtender) (rendered map[string]string, err error) {
+func (e Engine) renderWithTemplate(t *template.Template, tpls map[string]renderable, extender chart.ChartExtender) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -216,37 +230,17 @@ func (e Engine) renderWithReferences(tpls, referenceTpls map[string]renderable, 
 			err = errors.Errorf("rendering template failed: %v", r)
 		}
 	}()
-	t := template.New("gotpl")
-	if e.Strict {
-		t.Option("missingkey=error")
-	} else {
-		// Not that zero will attempt to add default values for types it knows,
-		// but will still emit <no value> for others. We mitigate that later.
-		t.Option("missingkey=zero")
-	}
 
-	e.initFunMap(t, referenceTpls, extender)
+	e.initFunMap(t, extender)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.
 	keys := sortTemplates(tpls)
-	referenceKeys := sortTemplates(referenceTpls)
 
 	for _, filename := range keys {
 		r := tpls[filename]
 		if _, err := t.New(filename).Parse(r.tpl); err != nil {
 			return map[string]string{}, cleanupParseError(filename, err)
-		}
-	}
-
-	// Adding the reference templates to the template context
-	// so they can be referenced in the tpl function
-	for _, filename := range referenceKeys {
-		if t.Lookup(filename) == nil {
-			r := referenceTpls[filename]
-			if _, err := t.New(filename).Parse(r.tpl); err != nil {
-				return map[string]string{}, cleanupParseError(filename, err)
-			}
 		}
 	}
 

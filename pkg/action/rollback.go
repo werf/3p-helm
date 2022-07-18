@@ -200,19 +200,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 	}
 
 	if err := rolloutPhaseManager.DoStage(
-		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
-			if len(stage.ExternalDependencies) > 0 && r.Wait {
-				if r.WaitForJobs {
-					if err := r.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), r.Timeout); err != nil {
-						return err
-					}
-				} else {
-					if err := r.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), r.Timeout); err != nil {
-						return err
-					}
-				}
+		func(stgIndex int, stage *stages.Stage) error {
+			if len(stage.ExternalDependencies) == 0 || !r.Wait {
+				return nil
 			}
 
+			if r.WaitForJobs {
+				return r.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), r.Timeout)
+			} else {
+				return r.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), r.Timeout)
+			}
+		},
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
 			if len(prevDeployedStgResources) == 0 {
 				stage.Result, err = r.cfg.KubeClient.Create(stage.DesiredResources)
 				if err != nil {
@@ -235,19 +234,18 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 				}
 			}
 
-			if r.Wait {
-				if r.WaitForJobs {
-					if err := r.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, r.Timeout); err != nil {
-						return err
-					}
-				} else {
-					if err := r.cfg.KubeClient.Wait(stage.DesiredResources, r.Timeout); err != nil {
-						return err
-					}
-				}
+			return nil
+		},
+		func(stgIndex int, stage *stages.Stage) error {
+			if !r.Wait {
+				return nil
 			}
 
-			return nil
+			if r.WaitForJobs {
+				return r.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, r.Timeout)
+			} else {
+				return r.cfg.KubeClient.Wait(stage.DesiredResources, r.Timeout)
+			}
 		},
 	); err != nil {
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)

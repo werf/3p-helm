@@ -48,15 +48,27 @@ func (m *RolloutPhaseManager) AddPreviouslyDeployedResources(resources kube.Reso
 	return m
 }
 
-func (m *RolloutPhaseManager) DoStage(doFn func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error) error {
+func (m *RolloutPhaseManager) DoStage(
+	extDepTrackFn func(stgIndex int, stage *stages.Stage) error,
+	applyFn func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error,
+	trackFn func(stgIndex int, stage *stages.Stage) error,
+) error {
 	for i, stg := range m.Phase.SortedStages {
+		if err := extDepTrackFn(i, stg); err != nil {
+			return fmt.Errorf("error tracking external dependencies: %w", err)
+		}
+
+		if err := applyFn(i, stg, m.previouslyDeployedResources.Intersect(stg.DesiredResources)); err != nil {
+			return fmt.Errorf("error applying resources: %w", err)
+		}
+
 		rel.SetRolloutPhaseStageInfo(m.Release, i)
 		if err := m.Storage.Update(m.Release); err != nil {
 			return fmt.Errorf("error updating release in storage: %w", err)
 		}
 
-		if err := doFn(i, stg, m.previouslyDeployedResources.Intersect(stg.DesiredResources)); err != nil {
-			return fmt.Errorf("error processing stage: %w", err)
+		if err := trackFn(i, stg); err != nil {
+			return fmt.Errorf("error tracking resources: %w", err)
 		}
 	}
 

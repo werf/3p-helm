@@ -409,19 +409,18 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	}
 
 	if err := rolloutPhaseManager.DoStage(
-		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
-			if len(stage.ExternalDependencies) > 0 && i.Wait {
-				if i.WaitForJobs {
-					if err := i.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), i.Timeout); err != nil {
-						return err
-					}
-				} else {
-					if err := i.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), i.Timeout); err != nil {
-						return err
-					}
-				}
+		func(stgIndex int, stage *stages.Stage) error {
+			if len(stage.ExternalDependencies) == 0 || !i.Wait {
+				return nil
 			}
 
+			if i.WaitForJobs {
+				return i.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), i.Timeout)
+			} else {
+				return i.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), i.Timeout)
+			}
+		},
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
 			// At this point, we can do the install. Note that before we were detecting whether to
 			// do an update, but it's not clear whether we WANT to do an update if the re-use is set
 			// to true, since that is basically an upgrade operation.
@@ -437,19 +436,18 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 				}
 			}
 
-			if i.Wait {
-				if i.WaitForJobs {
-					if err := i.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, i.Timeout); err != nil {
-						return err
-					}
-				} else {
-					if err := i.cfg.KubeClient.Wait(stage.DesiredResources, i.Timeout); err != nil {
-						return err
-					}
-				}
+			return nil
+		},
+		func(stgIndex int, stage *stages.Stage) error {
+			if !i.Wait {
+				return nil
 			}
 
-			return nil
+			if i.WaitForJobs {
+				return i.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, i.Timeout)
+			} else {
+				return i.cfg.KubeClient.Wait(stage.DesiredResources, i.Timeout)
+			}
 		},
 	); err != nil {
 		i.reportToRun(c, rel, fmt.Errorf("error processing rollout phase stage: %w", err))

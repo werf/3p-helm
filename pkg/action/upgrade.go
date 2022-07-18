@@ -434,19 +434,18 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	}
 
 	if err := rolloutPhaseManager.DoStage(
-		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
-			if len(stage.ExternalDependencies) > 0 && u.Wait {
-				if u.WaitForJobs {
-					if err := u.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), u.Timeout); err != nil {
-						return err
-					}
-				} else {
-					if err := u.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), u.Timeout); err != nil {
-						return err
-					}
-				}
+		func(stgIndex int, stage *stages.Stage) error {
+			if len(stage.ExternalDependencies) == 0 || !u.Wait {
+				return nil
 			}
 
+			if u.WaitForJobs {
+				return u.cfg.KubeClient.WaitWithJobs(stage.ExternalDependencies.AsResourceList(), u.Timeout)
+			} else {
+				return u.cfg.KubeClient.Wait(stage.ExternalDependencies.AsResourceList(), u.Timeout)
+			}
+		},
+		func(stgIndex int, stage *stages.Stage, prevDeployedStgResources kube.ResourceList) error {
 			if len(prevDeployedStgResources) == 0 {
 				stage.Result, err = u.cfg.KubeClient.Create(stage.DesiredResources)
 				if err != nil {
@@ -469,19 +468,18 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 				}
 			}
 
-			if u.Wait {
-				if u.WaitForJobs {
-					if err := u.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, u.Timeout); err != nil {
-						return err
-					}
-				} else {
-					if err := u.cfg.KubeClient.Wait(stage.DesiredResources, u.Timeout); err != nil {
-						return err
-					}
-				}
+			return nil
+		},
+		func(stgIndex int, stage *stages.Stage) error {
+			if !u.Wait {
+				return nil
 			}
 
-			return nil
+			if u.WaitForJobs {
+				return u.cfg.KubeClient.WaitWithJobs(stage.DesiredResources, u.Timeout)
+			} else {
+				return u.cfg.KubeClient.Wait(stage.DesiredResources, u.Timeout)
+			}
 		},
 	); err != nil {
 		u.cfg.recordRelease(originalRelease)

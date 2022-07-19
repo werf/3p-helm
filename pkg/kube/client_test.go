@@ -167,7 +167,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := c.Update(first, second, false)
+	result, err := c.Update(first, second, UpdateOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

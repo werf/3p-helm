@@ -218,7 +218,12 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 					return err
 				}
 			} else {
-				stage.Result, err = r.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, r.Force)
+				stage.Result, err = r.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, kube.UpdateOptions{
+					Force:                        r.Force,
+					SkipDeleteIfInvalidOwnership: true,
+					ReleaseName:                  targetRelease.Name,
+					ReleaseNamespace:             targetRelease.Namespace,
+				})
 				if err != nil {
 					return err
 				}
@@ -255,7 +260,13 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 
 			if len(createdResources) > 0 {
 				r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(createdResources))
-				_, errs := r.cfg.KubeClient.Delete(createdResources, kube.DeleteOptions{Wait: r.Wait, WaitTimeout: r.Timeout})
+				_, errs := r.cfg.KubeClient.Delete(createdResources, kube.DeleteOptions{
+					Wait:                   r.Wait,
+					WaitTimeout:            r.Timeout,
+					SkipIfInvalidOwnership: true,
+					ReleaseName:            targetRelease.Name,
+					ReleaseNamespace:       targetRelease.Namespace,
+				})
 				if errs != nil {
 					var errorList []string
 					for _, e := range errs {

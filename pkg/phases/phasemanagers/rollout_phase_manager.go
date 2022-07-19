@@ -77,7 +77,12 @@ func (m *RolloutPhaseManager) DoStage(
 
 func (m *RolloutPhaseManager) DeleteOrphanedResources() error {
 	orphanedResources := m.previouslyDeployedResources.Difference(m.Phase.AllResources())
-	_, errs := m.kubeClient.Delete(orphanedResources, kube.DeleteOptions{Wait: true})
+	_, errs := m.kubeClient.Delete(orphanedResources, kube.DeleteOptions{
+		Wait:                   true,
+		SkipIfInvalidOwnership: true,
+		ReleaseName:            m.Release.Name,
+		ReleaseNamespace:       m.Release.Namespace,
+	})
 	if len(errs) > 0 {
 		return fmt.Errorf("while deleting previously deployed but now orphaned resources got %d error(s): %s", len(errs), joinErrors(errs))
 	}

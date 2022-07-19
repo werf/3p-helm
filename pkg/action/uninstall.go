@@ -143,7 +143,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		u.cfg.Log("uninstall: Failed to store updated release: %s", err)
 	}
 
-	deletedResources, kept, errs := u.deleteResources(deployedResources)
+	deletedResources, kept, errs := u.deleteResources(rel, deployedResources)
 
 	if kept != "" {
 		kept = "These resources were kept due to the resource policy:\n" + kept
@@ -231,7 +231,7 @@ func joinErrors(errs []error) string {
 	return strings.Join(es, "; ")
 }
 
-func (u *Uninstall) deleteResources(res kube.ResourceList) (kube.ResourceList, string, []error) {
+func (u *Uninstall) deleteResources(rel *release.Release, res kube.ResourceList) (kube.ResourceList, string, []error) {
 	manifestsStr, err := res.ToYamlDocs()
 	if err != nil {
 		return nil, "", []error{fmt.Errorf("error converting resource list to yaml manifests: %w", err)}
@@ -269,7 +269,12 @@ func (u *Uninstall) deleteResources(res kube.ResourceList) (kube.ResourceList, s
 		return nil, "", []error{errors.Wrap(err, "unable to build kubernetes objects for delete")}
 	}
 	if len(resources) > 0 {
-		_, errs = u.cfg.KubeClient.Delete(resources, kube.DeleteOptions{Wait: true})
+		_, errs = u.cfg.KubeClient.Delete(resources, kube.DeleteOptions{
+			Wait:                   true,
+			SkipIfInvalidOwnership: true,
+			ReleaseName:            rel.Name,
+			ReleaseNamespace:       rel.Namespace,
+		})
 	}
 	return resources, kept, errs
 }

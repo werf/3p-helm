@@ -295,7 +295,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	// It is safe to use "force" here because these are resources currently rendered by the chart.
-	err = resources.Visit(setMetadataVisitor(rel.Name, rel.Namespace, true))
+	err = resources.Visit(releaseutil.SetMetadataVisitor(rel.Name, rel.Namespace, true))
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// deleting the release because the manifest will be pointing at that
 	// resource
 	if !i.ClientOnly && !isUpgrade && len(resources) > 0 {
-		toBeAdopted, err = existingResourceConflict(resources, rel.Name, rel.Namespace)
+		toBeAdopted, err = ExistingResourceConflict(resources, rel.Name, rel.Namespace)
 		if err != nil {
 			return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with install")
 		}
@@ -430,7 +430,11 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 					return err
 				}
 			} else if len(stage.DesiredResources) > 0 {
-				stage.Result, err = i.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, false)
+				stage.Result, err = i.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, kube.UpdateOptions{
+					SkipDeleteIfInvalidOwnership: true,
+					ReleaseName:                  rel.Name,
+					ReleaseNamespace:             rel.Namespace,
+				})
 				if err != nil {
 					return err
 				}

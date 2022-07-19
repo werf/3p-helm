@@ -314,7 +314,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 	}
 
 	// It is safe to use force only on target because these are resources currently rendered by the chart.
-	err = target.Visit(setMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
+	err = target.Visit(releaseutil.SetMetadataVisitor(upgradedRelease.Name, upgradedRelease.Namespace, true))
 	if err != nil {
 		return upgradedRelease, err
 	}
@@ -332,7 +332,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		}
 	}
 
-	toBeAdopted, err := existingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
+	toBeAdopted, err := ExistingResourceConflict(toBeCreated, upgradedRelease.Name, upgradedRelease.Namespace)
 	if err != nil {
 		return nil, errors.Wrap(err, "rendered manifests contain a resource that already exists. Unable to continue with update")
 	}
@@ -452,7 +452,12 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 					return err
 				}
 			} else {
-				stage.Result, err = u.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, u.Force)
+				stage.Result, err = u.cfg.KubeClient.Update(prevDeployedStgResources, stage.DesiredResources, kube.UpdateOptions{
+					Force:                        u.Force,
+					SkipDeleteIfInvalidOwnership: true,
+					ReleaseName:                  upgradedRelease.Name,
+					ReleaseNamespace:             upgradedRelease.Namespace,
+				})
 				if err != nil {
 					return err
 				}
@@ -520,7 +525,13 @@ func (u *Upgrade) failRelease(rel *release.Release, created kube.ResourceList, e
 	u.cfg.recordRelease(rel)
 	if u.CleanupOnFail && len(created) > 0 {
 		u.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(created))
-		_, errs := u.cfg.KubeClient.Delete(created, kube.DeleteOptions{Wait: true, WaitTimeout: u.Timeout})
+		_, errs := u.cfg.KubeClient.Delete(created, kube.DeleteOptions{
+			Wait:                   true,
+			WaitTimeout:            u.Timeout,
+			SkipIfInvalidOwnership: true,
+			ReleaseName:            rel.Name,
+			ReleaseNamespace:       rel.Namespace,
+		})
 		if errs != nil {
 			var errorList []string
 			for _, e := range errs {

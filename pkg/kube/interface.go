@@ -24,9 +24,19 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+type UpdateOptions struct {
+	Force                        bool
+	SkipDeleteIfInvalidOwnership bool
+	ReleaseName                  string // Required if SkipDeleteIfInvalidOwnership == true
+	ReleaseNamespace             string // Required if SkipDeleteIfInvalidOwnership == true
+}
+
 type DeleteOptions struct {
-	Wait        bool
-	WaitTimeout time.Duration
+	Wait                   bool
+	WaitTimeout            time.Duration
+	SkipIfInvalidOwnership bool
+	ReleaseName            string // Required if SkipIfInvalidOwnership == true
+	ReleaseNamespace       string // Required if SkipIfInvalidOwnership == true
 }
 
 // Interface represents a client capable of communicating with the Kubernetes API.
@@ -61,7 +71,7 @@ type Interface interface {
 
 	// Update updates one or more resources or creates the resource
 	// if it doesn't exist.
-	Update(original, target ResourceList, force bool) (*Result, error)
+	Update(original, target ResourceList, opts UpdateOptions) (*Result, error)
 
 	// Build creates a resource list from a Reader.
 	//

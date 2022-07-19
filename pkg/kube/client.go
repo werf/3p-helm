@@ -29,6 +29,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/releaseutil"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -237,7 +238,7 @@ func (c *Client) Build(reader io.Reader, validate bool) (ResourceList, error) {
 // occurs, a Result will still be returned with the error, containing all
 // resource updates, creations, and deletions that were attempted. These can be
 // used for cleanup or other logging purposes.
-func (c *Client) Update(original, target ResourceList, force bool) (*Result, error) {
+func (c *Client) Update(original, target ResourceList, opts UpdateOptions) (*Result, error) {
 	updateErrors := []string{}
 	res := &Result{}
 
@@ -283,7 +284,7 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			}
 		}
 
-		if err := updateResource(c, info, originalInfo.Object, force); err != nil {
+		if err := updateResource(c, info, originalInfo.Object, opts.Force); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
 		}
@@ -307,6 +308,12 @@ func (c *Client) Update(original, target ResourceList, force bool) (*Result, err
 			c.Log("Unable to get obj %q, err: %s", info.Name, err)
 			continue
 		}
+
+		if err := releaseutil.CheckOwnership(info.Object, opts.ReleaseName, opts.ReleaseNamespace); err != nil {
+			c.Log("Skipping delete of %q due to unmatched ownership annotations: %s", info.Name, err)
+			continue
+		}
+
 		annotations, err := metadataAccessor.Annotations(info.Object)
 		if err != nil {
 			c.Log("Unable to get annotations on %q, err: %s", info.Name, err)
@@ -340,6 +347,18 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 	res := &Result{}
 	mtx := sync.Mutex{}
 	err := perform(resources, func(info *resource.Info) error {
+		if opts.SkipIfInvalidOwnership {
+			if err := info.Get(); err != nil {
+				c.Log("Skipping delete of %q due to inability to get the object from cluster: %s", info.Name, err)
+				return nil
+			}
+
+			if err := releaseutil.CheckOwnership(info.Object, opts.ReleaseName, opts.ReleaseNamespace); err != nil {
+				c.Log("Skipping delete of %q due to unmatched ownership annotations: %s", info.Name, err)
+				return nil
+			}
+		}
+
 		if c.Extender != nil {
 			if err := c.Extender.BeforeDeleteResource(info); err != nil {
 				mtx.Lock()

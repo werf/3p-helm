@@ -41,6 +41,7 @@ To see revision numbers, run 'helm history RELEASE'.
 
 type RollbackCmdOptions struct {
 	StagesSplitter phases.Splitter
+	CleanupOnFail  *bool
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
@@ -70,6 +71,10 @@ func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOp
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.CleanupOnFail != nil {
+				client.CleanupOnFail = *opts.CleanupOnFail
+			}
+
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
 				if err != nil {

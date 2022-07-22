@@ -83,6 +83,7 @@ type UpgradeCmdOptions struct {
 	Atomic            *bool
 	Timeout           *time.Duration
 	IgnorePending     *bool
+	CleanupOnFail     *bool
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
@@ -140,6 +141,9 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			if opts.Timeout != nil {
 				client.Timeout = *opts.Timeout
 			}
+			if opts.CleanupOnFail != nil {
+				client.CleanupOnFail = *opts.CleanupOnFail
+			}
 
 			client.Namespace = settings.Namespace()
 
@@ -170,6 +174,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 					instClient.DisableOpenAPIValidation = client.DisableOpenAPIValidation
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
+					instClient.CleanupOnFail = client.CleanupOnFail
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {

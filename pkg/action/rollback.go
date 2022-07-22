@@ -256,11 +256,15 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
 
 		if r.CleanupOnFail {
-			createdResources := rolloutPhaseManager.Phase.SortedStages.MergedCreatedResources()
+			var createdResourcesToDelete kube.ResourceList
+			var applyErr *phasemanagers.ApplyError
+			if errors.As(err, &applyErr) {
+				createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created
+			}
 
-			if len(createdResources) > 0 {
-				r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(createdResources))
-				_, errs := r.cfg.KubeClient.Delete(createdResources, kube.DeleteOptions{
+			if len(createdResourcesToDelete) > 0 {
+				r.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(createdResourcesToDelete))
+				_, errs := r.cfg.KubeClient.Delete(createdResourcesToDelete, kube.DeleteOptions{
 					Wait:                   r.Wait,
 					WaitTimeout:            r.Timeout,
 					SkipIfInvalidOwnership: true,

@@ -134,10 +134,7 @@ func (c *Client) CreateIfNotExists(resources ResourceList) (*Result, error) {
 	}
 
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, createResourceIfNotExists); err != nil {
-		return nil, err
-	}
-	return &Result{Created: resources}, nil
+	return performWithResult(resources, createResourceIfNotExists)
 }
 
 // Create creates Kubernetes resources specified in the resource list.
@@ -149,10 +146,7 @@ func (c *Client) Create(resources ResourceList) (*Result, error) {
 	}
 
 	c.Log("creating %d resource(s)", len(resources))
-	if err := perform(resources, createResource); err != nil {
-		return nil, err
-	}
-	return &Result{Created: resources}, nil
+	return performWithResult(resources, createResource)
 }
 
 // Wait waits up to the given timeout for the specified resources to be ready.
@@ -254,18 +248,17 @@ func (c *Client) Update(original, target ResourceList, opts UpdateOptions) (*Res
 				return errors.Wrap(err, "could not get information about the resource")
 			}
 
-			// Append the created resource to the results, even if something fails
-			res.Created = append(res.Created, info)
-
 			if c.Extender != nil {
 				if err := c.Extender.BeforeCreateResource(info); err != nil {
 					return err
 				}
 			}
 			// Since the resource does not exist, create it.
-			if err := createResource(info); err != nil {
+			if _, err := createResource(info); err != nil {
 				return errors.Wrap(err, "failed to create resource")
 			}
+
+			res.Created = append(res.Created, info)
 
 			kind := info.Mapping.GroupVersionKind.Kind
 			c.Log("Created a new %s called %q in %s\n", kind, info.Name, info.Namespace)
@@ -287,9 +280,9 @@ func (c *Client) Update(original, target ResourceList, opts UpdateOptions) (*Res
 		if err := updateResource(c, info, originalInfo.Object, opts.Force); err != nil {
 			c.Log("error updating the resource %q:\n\t %v", info.Name, err)
 			updateErrors = append(updateErrors, err.Error())
+		} else {
+			res.Updated = append(res.Updated, info)
 		}
-		// Because we check for errors later, append the info regardless
-		res.Updated = append(res.Updated, info)
 
 		return nil
 	})
@@ -325,7 +318,7 @@ func (c *Client) Update(original, target ResourceList, opts UpdateOptions) (*Res
 
 		if c.Extender != nil {
 			if err := c.Extender.BeforeDeleteResource(info); err != nil {
-				return nil, err
+				return res, err
 			}
 		}
 
@@ -391,7 +384,7 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 		errs = append(errs, err)
 	}
 	if errs != nil {
-		return nil, errs
+		return res, errs
 	}
 
 	if opts.Wait {
@@ -405,7 +398,7 @@ func (c *Client) Delete(resources ResourceList, opts DeleteOptions) (*Result, []
 		}
 
 		if err := c.ResourcesWaiter.WaitUntilDeleted(context.Background(), specs, opts.WaitTimeout); err != nil {
-			return nil, []error{fmt.Errorf("waiting until resources are deleted failed: %s", err)}
+			return res, []error{fmt.Errorf("waiting until resources are deleted failed: %s", err)}
 		}
 	}
 
@@ -467,6 +460,87 @@ func perform(infos ResourceList, fn func(*resource.Info) error) error {
 	return nil
 }
 
+type performResourceStatus int
+
+const (
+	resourceStatusUnknown performResourceStatus = iota
+	resourceStatusCreated
+	resourceStatusUpdated
+	resourceStatusDeleted
+)
+
+func performWithResult(infos ResourceList, fn func(*resource.Info) (performResourceStatus, error)) (*Result, error) {
+	if len(infos) == 0 {
+		return &Result{}, ErrNoObjectsVisited
+	}
+
+	type performResult struct {
+		resource *resource.Info
+		status   performResourceStatus
+		error    error
+	}
+
+	performResultsCh := make(chan performResult)
+	go func() {
+		var wg sync.WaitGroup
+		var kind string
+		for _, info := range infos {
+			infoC := info
+
+			if currentKind := infoC.Object.GetObjectKind().GroupVersionKind().Kind; kind != currentKind {
+				wg.Wait()
+				kind = currentKind
+			}
+
+			wg.Add(1)
+			go func() {
+				status, err := fn(infoC)
+				performResultsCh <- performResult{
+					resource: infoC,
+					status:   status,
+					error:    err,
+				}
+				wg.Done()
+			}()
+		}
+	}()
+
+	result := &Result{}
+	var errs []error
+	for range infos {
+		perfRes := <-performResultsCh
+
+		if perfRes.error != nil {
+			errs = append(errs, perfRes.error)
+			continue
+		}
+
+		switch perfRes.status {
+		case resourceStatusUnknown:
+		case resourceStatusCreated:
+			result.Created = append(result.Created, perfRes.resource)
+		case resourceStatusUpdated:
+			result.Updated = append(result.Updated, perfRes.resource)
+		case resourceStatusDeleted:
+			result.Deleted = append(result.Deleted, perfRes.resource)
+		default:
+			panic("unexpected status")
+		}
+	}
+
+	var resultErr error
+	if len(errs) > 0 {
+		var errMsgs []string
+		for _, err := range errs {
+			errMsgs = append(errMsgs, err.Error())
+		}
+
+		resultErr = errors.New(strings.Join(errMsgs, "; "))
+	}
+
+	return result, resultErr
+}
+
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.
 // Otherwise, one is calculated based on the name of the binary.
 func getManagedFieldsManager() string {
@@ -504,23 +578,24 @@ func batchPerform(infos ResourceList, fn func(*resource.Info) error, errs chan<-
 	}
 }
 
-func createResource(info *resource.Info) error {
+func createResource(info *resource.Info) (performResourceStatus, error) {
 	obj, err := resource.NewHelper(info.Client, info.Mapping).WithFieldManager(getManagedFieldsManager()).Create(info.Namespace, true, info.Object)
 	if err != nil {
-		return err
+		return resourceStatusUnknown, err
 	}
-	return info.Refresh(obj, true)
+
+	return resourceStatusCreated, info.Refresh(obj, true)
 }
 
-func createResourceIfNotExists(info *resource.Info) error {
+func createResourceIfNotExists(info *resource.Info) (performResourceStatus, error) {
 	_, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
 	if apierrors.IsNotFound(err) {
 		return createResource(info)
 	} else if err != nil {
-		return err
+		return resourceStatusUnknown, err
 	}
 
-	return nil
+	return resourceStatusUnknown, nil
 }
 
 func deleteResource(info *resource.Info) error {

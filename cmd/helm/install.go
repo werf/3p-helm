@@ -124,6 +124,7 @@ type InstallCmdOptions struct {
 	Wait              *bool
 	Atomic            *bool
 	Timeout           *time.Duration
+	CleanupOnFail     *bool
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
@@ -163,6 +164,9 @@ func NewInstallCmd(cfg *action.Configuration, out io.Writer, opts InstallCmdOpti
 			if opts.Timeout != nil {
 				client.Timeout = *opts.Timeout
 			}
+			if opts.CleanupOnFail != nil {
+				client.CleanupOnFail = *opts.CleanupOnFail
+			}
 
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
@@ -197,6 +201,7 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	f.BoolVar(&client.Atomic, "atomic", false, "if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used")
 	f.BoolVar(&client.SkipCRDs, "skip-crds", false, "if set, no CRDs will be installed. By default, CRDs are installed if not already present")
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
+	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this installation when install fails")
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 

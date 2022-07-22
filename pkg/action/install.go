@@ -92,6 +92,7 @@ type Install struct {
 	SubNotes                 bool
 	DisableOpenAPIValidation bool
 	IncludeCRDs              bool
+	CleanupOnFail            bool
 	// KubeVersion allows specifying a custom kubernetes version to use and
 	// APIVersions allows a manual set of supported API Versions to be passed
 	// (for things like templating). These are ignored if ClientOnly is false
@@ -375,26 +376,26 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	// pre-install hooks
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPreInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed pre-install: %s", err))
+			i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("failed pre-install: %s", err))
 			return
 		}
 	}
 
 	history, err := i.cfg.Releases.HistoryUntilRevision(rel.Name, rel.Version)
 	if err != nil {
-		i.reportToRun(c, rel, fmt.Errorf("error getting release history: %w", err))
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error getting release history: %w", err))
 		return
 	}
 
 	rolloutPhase, err := phases.NewRolloutPhase(rel, i.StagesSplitter, i.cfg.KubeClient).
 		ParseStages(resources)
 	if err != nil {
-		i.reportToRun(c, rel, fmt.Errorf("error parsing stages for rollout phase: %w", err))
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error parsing stages for rollout phase: %w", err))
 		return
 	}
 
 	if err := rolloutPhase.GenerateStagesExternalDeps(i.StagesExternalDepsGenerator); err != nil {
-		i.reportToRun(c, rel, fmt.Errorf("error generating external deps for rollout phase: %w", err))
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error generating external deps for rollout phase: %w", err))
 		return
 	}
 
@@ -404,7 +405,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		AddPreviouslyDeployedResources(toBeAdopted).
 		AddCalculatedPreviouslyDeployedResources()
 	if err != nil {
-		i.reportToRun(c, rel, fmt.Errorf("error calculating previously deployed resources for rollout phase manager: %w", err))
+		i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("error calculating previously deployed resources for rollout phase manager: %w", err))
 		return
 	}
 
@@ -454,7 +455,14 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 			}
 		},
 	); err != nil {
-		i.reportToRun(c, rel, fmt.Errorf("error processing rollout phase stage: %w", err))
+		var createdResourcesToDelete kube.ResourceList
+		var applyErr *phasemanagers.ApplyError
+		if errors.As(err, &applyErr) {
+			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created
+		}
+
+		i.reportToRun(c, rel, createdResourcesToDelete, fmt.Errorf("error processing rollout phase stage: %w", err))
+
 		return
 	}
 
@@ -464,7 +472,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 
 	if !i.DisableHooks {
 		if err := i.cfg.execHook(rel, release.HookPostInstall, i.Timeout); err != nil {
-			i.reportToRun(c, rel, fmt.Errorf("failed post-install: %s", err))
+			i.reportToRun(c, rel, kube.ResourceList{}, fmt.Errorf("failed post-install: %s", err))
 			return
 		}
 	}
@@ -486,27 +494,45 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		i.cfg.Log("failed to record the release: %s", err)
 	}
 
-	i.reportToRun(c, rel, nil)
+	i.reportToRun(c, rel, kube.ResourceList{}, nil)
 }
 func (i *Install) handleContext(ctx context.Context, c chan<- resultMessage, done chan struct{}, rel *release.Release) {
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
-		i.reportToRun(c, rel, err)
+		i.reportToRun(c, rel, kube.ResourceList{}, err)
 	case <-done:
 		return
 	}
 }
-func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, err error) {
+func (i *Install) reportToRun(c chan<- resultMessage, rel *release.Release, createdToCleanup kube.ResourceList, err error) {
 	i.Lock.Lock()
 	if err != nil {
-		rel, err = i.failRelease(rel, err)
+		rel, err = i.failRelease(rel, createdToCleanup, err)
 	}
 	c <- resultMessage{r: rel, e: err}
 	i.Lock.Unlock()
 }
-func (i *Install) failRelease(rel *release.Release, err error) (*release.Release, error) {
+func (i *Install) failRelease(rel *release.Release, createdToCleanup kube.ResourceList, err error) (*release.Release, error) {
 	rel.SetStatus(release.StatusFailed, fmt.Sprintf("Release %q failed: %s", i.ReleaseName, err.Error()))
+	if i.CleanupOnFail && len(createdToCleanup) > 0 {
+		i.cfg.Log("Cleanup on fail set, cleaning up %d resources", len(createdToCleanup))
+		_, errs := i.cfg.KubeClient.Delete(createdToCleanup, kube.DeleteOptions{
+			Wait:                   true,
+			WaitTimeout:            i.Timeout,
+			SkipIfInvalidOwnership: true,
+			ReleaseName:            rel.Name,
+			ReleaseNamespace:       rel.Namespace,
+		})
+		if errs != nil {
+			var errorList []string
+			for _, e := range errs {
+				errorList = append(errorList, e.Error())
+			}
+			return rel, errors.Wrapf(fmt.Errorf("unable to cleanup resources: %s", strings.Join(errorList, ", ")), "an error occurred while cleaning up resources. original install error: %s", err)
+		}
+		i.cfg.Log("Resource cleanup complete")
+	}
 	if i.Atomic {
 		i.cfg.Log("Install failed and atomic is set, uninstalling release")
 		uninstall := NewUninstall(i.cfg, i.StagesSplitter)

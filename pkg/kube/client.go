@@ -40,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/watch"
@@ -474,71 +475,76 @@ func performWithResult(infos ResourceList, fn func(*resource.Info) (performResou
 		return &Result{}, ErrNoObjectsVisited
 	}
 
+	infosByGK := groupInfosByGK(infos)
+
 	type performResult struct {
 		resource *resource.Info
 		status   performResourceStatus
 		error    error
 	}
 
-	performResultsCh := make(chan performResult)
-	go func() {
-		var wg sync.WaitGroup
-		var kind string
-		for _, info := range infos {
-			infoC := info
+	result := &Result{}
 
-			if currentKind := infoC.Object.GetObjectKind().GroupVersionKind().Kind; kind != currentKind {
-				wg.Wait()
-				kind = currentKind
-			}
-
-			wg.Add(1)
+	for _, resList := range infosByGK {
+		performResultsCh := make(chan performResult, len(resList))
+		for _, res := range resList {
+			resC := res
 			go func() {
-				status, err := fn(infoC)
+				status, err := fn(resC)
 				performResultsCh <- performResult{
-					resource: infoC,
+					resource: resC,
 					status:   status,
 					error:    err,
 				}
-				wg.Done()
 			}()
 		}
-	}()
 
-	result := &Result{}
-	var errs []error
-	for range infos {
-		perfRes := <-performResultsCh
+		var errs []error
+		for range resList {
+			perfRes := <-performResultsCh
 
-		if perfRes.error != nil {
-			errs = append(errs, perfRes.error)
-			continue
+			if perfRes.error != nil {
+				errs = append(errs, perfRes.error)
+				continue
+			}
+
+			switch perfRes.status {
+			case resourceStatusUnknown:
+			case resourceStatusCreated:
+				result.Created = append(result.Created, perfRes.resource)
+			case resourceStatusUpdated:
+				result.Updated = append(result.Updated, perfRes.resource)
+			case resourceStatusDeleted:
+				result.Deleted = append(result.Deleted, perfRes.resource)
+			default:
+				panic("unexpected status")
+			}
 		}
 
-		switch perfRes.status {
-		case resourceStatusUnknown:
-		case resourceStatusCreated:
-			result.Created = append(result.Created, perfRes.resource)
-		case resourceStatusUpdated:
-			result.Updated = append(result.Updated, perfRes.resource)
-		case resourceStatusDeleted:
-			result.Deleted = append(result.Deleted, perfRes.resource)
-		default:
-			panic("unexpected status")
+		if len(errs) > 0 {
+			return result, errs[0]
 		}
 	}
 
-	var resultErr error
-	if len(errs) > 0 {
-		var errMsgs []string
-		for _, err := range errs {
-			errMsgs = append(errMsgs, err.Error())
-		}
+	return result, nil
+}
 
-		resultErr = errors.New(strings.Join(errMsgs, "; "))
+func groupInfosByGK(infos ResourceList) []ResourceList {
+	var infosByGK []ResourceList
+	var lastGK schema.GroupKind
+	for _, info := range infos {
+		currentGK := info.Object.GetObjectKind().GroupVersionKind().GroupKind()
+		if lastGK == currentGK {
+			infosByGK[len(infosByGK)-1].Append(info)
+		} else {
+			rl := ResourceList{}
+			rl.Append(info)
+			infosByGK = append(infosByGK, rl)
+			lastGK = currentGK
+		}
 	}
 
-	return result, resultErr
+	return infosByGK
 }
 
 // getManagedFieldsManager returns the manager string. If one was set it will be returned.

@@ -492,7 +492,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 		createdResourcesToDelete := kube.ResourceList{}
 		var applyErr *phasemanagers.ApplyError
 		if errors.As(err, &applyErr) {
-			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created
+			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[applyErr.StageIndex].Result.Created
 		}
 
 		u.reportToPerformUpgrade(c, upgradedRelease, createdResourcesToDelete, fmt.Errorf("error processing rollout phase stage: %w", err))

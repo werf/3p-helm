@@ -289,7 +289,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	// Mark this release as in-progress
 	rel.SetStatus(release.StatusPendingInstall, "Initial install underway")
 
-	var toBeAdopted kube.ResourceList
+	toBeAdopted := kube.ResourceList{}
 	resources, err := i.cfg.KubeClient.Build(bytes.NewBufferString(rel.Manifest), !i.DisableOpenAPIValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to build kubernetes objects from release manifest")
@@ -455,7 +455,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 			}
 		},
 	); err != nil {
-		var createdResourcesToDelete kube.ResourceList
+		createdResourcesToDelete := kube.ResourceList{}
 		var applyErr *phasemanagers.ApplyError
 		if errors.As(err, &applyErr) {
 			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created

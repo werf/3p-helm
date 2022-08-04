@@ -27,7 +27,7 @@ import (
 )
 
 func ExistingResourceConflict(resources kube.ResourceList, releaseName, releaseNamespace string) (kube.ResourceList, error) {
-	var requireUpdate kube.ResourceList
+	requireUpdate := kube.ResourceList{}
 
 	err := resources.Visit(func(info *resource.Info, err error) error {
 		if err != nil {

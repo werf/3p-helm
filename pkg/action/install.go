@@ -458,7 +458,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 		createdResourcesToDelete := kube.ResourceList{}
 		var applyErr *phasemanagers.ApplyError
 		if errors.As(err, &applyErr) {
-			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created
+			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[applyErr.StageIndex].Result.Created
 		}
 
 		i.reportToRun(c, rel, createdResourcesToDelete, fmt.Errorf("error processing rollout phase stage: %w", err))

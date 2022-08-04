@@ -59,7 +59,7 @@ func (m *RolloutPhaseManager) DoStage(
 		}
 
 		if err := applyFn(i, stg, m.previouslyDeployedResources.Intersect(stg.DesiredResources)); err != nil {
-			return &ApplyError{Err: err}
+			return &ApplyError{StageIndex: i, Err: err}
 		}
 
 		rel.SetRolloutPhaseStageInfo(m.Release, i)
@@ -100,7 +100,8 @@ func joinErrors(errs []error) string {
 }
 
 type ApplyError struct {
-	Err error
+	StageIndex int
+	Err        error
 }
 
 func (e ApplyError) Error() string {

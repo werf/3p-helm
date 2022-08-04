@@ -130,7 +130,7 @@ func (c *Client) IsReachable() error {
 func (c *Client) CreateIfNotExists(resources ResourceList) (*Result, error) {
 	if c.Extender != nil {
 		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
-			return nil, err
+			return &Result{}, err
 		}
 	}
 
@@ -142,7 +142,7 @@ func (c *Client) CreateIfNotExists(resources ResourceList) (*Result, error) {
 func (c *Client) Create(resources ResourceList) (*Result, error) {
 	if c.Extender != nil {
 		if err := perform(resources, c.Extender.BeforeCreateResource); err != nil {
-			return nil, err
+			return &Result{}, err
 		}
 	}
 

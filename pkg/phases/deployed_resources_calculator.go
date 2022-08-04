@@ -31,7 +31,7 @@ func (c *DeployedResourcesCalculator) Calculate() (kube.ResourceList, error) {
 		return nil, nil
 	}
 
-	var result kube.ResourceList
+	result := kube.ResourceList{}
 	for i := *startAt; i < len(c.history); i++ {
 		release := c.history[i]
 

@@ -33,7 +33,7 @@ func (l SortedStageList) MergedCreatedResources() kube.ResourceList {
 }
 
 func (l SortedStageList) MergedCreatedResourcesInStagesRange(first, last int) kube.ResourceList {
-	var created kube.ResourceList
+	created := kube.ResourceList{}
 	for i := first; i <= last; i++ {
 		stg := l[i]
 
@@ -52,7 +52,7 @@ func (l SortedStageList) MergedUpdatedResources() kube.ResourceList {
 }
 
 func (l SortedStageList) MergedUpdatedResourcesInStagesRange(first, last int) kube.ResourceList {
-	var updated kube.ResourceList
+	updated := kube.ResourceList{}
 	for i := first; i <= last; i++ {
 		stg := l[i]
 
@@ -71,7 +71,7 @@ func (l SortedStageList) MergedDeletedResources() kube.ResourceList {
 }
 
 func (l SortedStageList) MergedDeletedResourcesInStagesRange(first, last int) kube.ResourceList {
-	var deleted kube.ResourceList
+	deleted := kube.ResourceList{}
 	for i := first; i <= last; i++ {
 		stg := l[i]
 
@@ -90,7 +90,7 @@ func (l SortedStageList) MergedDesiredResources() kube.ResourceList {
 }
 
 func (l SortedStageList) MergedDesiredResourcesInStagesRange(first, last int) kube.ResourceList {
-	var resources kube.ResourceList
+	resources := kube.ResourceList{}
 	for i := first; i <= last; i++ {
 		stg := l[i]
 		resources.Merge(stg.DesiredResources)

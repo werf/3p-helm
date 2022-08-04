@@ -325,7 +325,7 @@ func (u *Upgrade) performUpgrade(ctx context.Context, originalRelease, upgradedR
 		existingResources[objectKey(r)] = true
 	}
 
-	var toBeCreated kube.ResourceList
+	toBeCreated := kube.ResourceList{}
 	for _, r := range target {
 		if !existingResources[objectKey(r)] {
 			toBeCreated = append(toBeCreated, r)
@@ -489,7 +489,7 @@ func (u *Upgrade) releasingUpgrade(c chan<- resultMessage, upgradedRelease *rele
 	); err != nil {
 		u.cfg.recordRelease(originalRelease)
 
-		var createdResourcesToDelete kube.ResourceList
+		createdResourcesToDelete := kube.ResourceList{}
 		var applyErr *phasemanagers.ApplyError
 		if errors.As(err, &applyErr) {
 			createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created

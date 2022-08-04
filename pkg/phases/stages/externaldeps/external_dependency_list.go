@@ -7,7 +7,7 @@ import (
 type ExternalDependencyList []*ExternalDependency
 
 func (l ExternalDependencyList) AsResourceList() kube.ResourceList {
-	var resourceList kube.ResourceList
+	resourceList := kube.ResourceList{}
 	for _, extDep := range l {
 		resourceList = append(resourceList, extDep.Info)
 	}

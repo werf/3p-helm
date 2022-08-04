@@ -256,7 +256,7 @@ func (r *Rollback) performRollback(currentRelease, targetRelease *release.Releas
 		recordFailedStatus(r.cfg, currentRelease, targetRelease, err)
 
 		if r.CleanupOnFail {
-			var createdResourcesToDelete kube.ResourceList
+			createdResourcesToDelete := kube.ResourceList{}
 			var applyErr *phasemanagers.ApplyError
 			if errors.As(err, &applyErr) {
 				createdResourcesToDelete = rolloutPhaseManager.Phase.SortedStages[len(rolloutPhaseManager.Phase.SortedStages)-1].Result.Created

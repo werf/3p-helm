@@ -51,7 +51,7 @@ func (r ResourceList) Visit(fn resource.VisitorFunc) error {
 
 // Filter returns a new Result with Infos that satisfy the predicate fn.
 func (r ResourceList) Filter(fn func(*resource.Info) bool) ResourceList {
-	var result ResourceList
+	result := ResourceList{}
 	for _, i := range r {
 		if fn(i) {
 			result.Append(i)

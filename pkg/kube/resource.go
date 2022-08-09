@@ -115,7 +115,7 @@ func (r ResourceList) ToYamlDocs() (string, error) {
 
 // isMatchingInfo returns true if infos match on Name and GroupVersionKind.
 func isMatchingInfo(a, b *resource.Info) bool {
-	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
+	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind && a.Mapping.GroupVersionKind.Group == b.Mapping.GroupVersionKind.Group
 }
 
 func ResourceNameNamespaceGroupKind(info *resource.Info) string {

@@ -73,6 +73,8 @@ func NewUninstallCmd(cfg *action.Configuration, out io.Writer, opts UninstallCmd
 				client.DontFailIfNoRelease = *opts.DontFailIfNoRelease
 			}
 
+			client.Namespace = Settings.Namespace()
+
 			for i := 0; i < len(args); i++ {
 
 				res, err := client.Run(args[i])
@@ -83,7 +85,7 @@ func NewUninstallCmd(cfg *action.Configuration, out io.Writer, opts UninstallCmd
 					fmt.Fprintln(out, res.Info)
 				}
 
-				fmt.Fprintf(out, "release \"%s\" uninstalled\n", args[i])
+				fmt.Fprintf(out, "release \"%s\" successfully uninstalled\n", args[i])
 			}
 			return nil
 		},

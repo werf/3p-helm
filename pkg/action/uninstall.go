@@ -48,6 +48,7 @@ type Uninstall struct {
 
 	DeleteHooks     bool
 	DeleteNamespace bool
+	Namespace       string
 
 	DontFailIfNoRelease bool
 
@@ -76,6 +77,7 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 		// In the dry run case, just see if the release exists
 		r, err := u.cfg.releaseContent(name, 0)
 		if apierrors.IsNotFound(err) && u.DontFailIfNoRelease {
+			u.cfg.Log("No such release %q", name)
 			return &release.UninstallReleaseResponse{}, nil
 		} else if err != nil {
 			return &release.UninstallReleaseResponse{}, err
@@ -89,6 +91,18 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 
 	rels, err := u.cfg.Releases.History(name)
 	if errors.Is(err, driver.ErrReleaseNotFound) && u.DontFailIfNoRelease {
+		u.cfg.Log("No such release %q", name)
+
+		if u.DeleteNamespace && !u.KeepHistory {
+			if err := u.cfg.KubeClient.DeleteNamespace(context.Background(), u.Namespace, kube.DeleteOptions{Wait: true, WaitTimeout: u.Timeout}); err != nil {
+				if kube.IsNotFound(err) {
+					u.cfg.Log("No such namespace %q", u.Namespace)
+					return &release.UninstallReleaseResponse{}, nil
+				}
+				return nil, errors.Wrapf(err, "unable to delete namespace %s", u.Namespace)
+			}
+		}
+
 		return &release.UninstallReleaseResponse{}, nil
 	} else if err != nil {
 		return nil, errors.Wrapf(err, "uninstall: Release not loaded: %s", name)
@@ -190,18 +204,18 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			errs = append(errs, errors.Wrap(err, "uninstall: Failed to purge the release"))
 		}
 
-		if u.DeleteNamespace {
-			if err := u.cfg.KubeClient.DeleteNamespace(context.Background(), rel.Namespace, kube.DeleteOptions{Wait: true, WaitTimeout: u.Timeout}); err != nil {
-				errs = append(errs, errors.Wrap(err, fmt.Sprintf("unable to delete namespace %s", rel.Namespace)))
-			}
-		}
-
 		// Return the errors that occurred while deleting the release, if any
 		if len(errs) > 0 {
 			return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
 		}
 
 		return res, nil
+	}
+
+	if u.DeleteNamespace && !u.KeepHistory {
+		if err := u.cfg.KubeClient.DeleteNamespace(context.Background(), u.Namespace, kube.DeleteOptions{Wait: true, WaitTimeout: u.Timeout}); err != nil {
+			errs = append(errs, errors.Wrapf(err, "unable to delete namespace %s", u.Namespace))
+		}
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {

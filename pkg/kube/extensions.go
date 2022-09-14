@@ -5,9 +5,13 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func IsNotFound(err error) bool {
+	return err != nil && apierrors.IsNotFound(err)
+}
 
 func (c *Client) DeleteNamespace(ctx context.Context, namespace string, opts DeleteOptions) error {
 	cs, err := c.Factory.KubernetesClientSet()

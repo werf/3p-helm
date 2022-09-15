@@ -126,8 +126,8 @@ func (m *RolloutPhase) validateStagesExternalDeps() error {
 	for _, stage := range m.SortedStages {
 		for _, stageExtDep := range stage.ExternalDependencies {
 			for _, phaseDesiredRes := range phaseDesiredResources {
-				if kube.SameResources(stageExtDep.Info, phaseDesiredRes) {
-					return fmt.Errorf("resources from current release can't be external dependencies: remove external dependency on %q", kube.ResourceNameNamespaceGroupKind(stageExtDep.Info))
+				if kube.ResourceNameNamespaceKind(stageExtDep.Info) == kube.ResourceNameNamespaceKind(phaseDesiredRes) {
+					return fmt.Errorf("resources from current release can't be external dependencies: remove external dependency on %q", kube.ResourceNameNamespaceKind(stageExtDep.Info))
 				}
 			}
 		}

@@ -113,16 +113,11 @@ func (r ResourceList) ToYamlDocs() (string, error) {
 	return manifestsStr, nil
 }
 
-// isMatchingInfo returns true if infos match on Name and GroupVersionKind.
+// isMatchingInfo returns true if infos match on Name/Namespace and Kind.
 func isMatchingInfo(a, b *resource.Info) bool {
-	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind && a.Mapping.GroupVersionKind.Group == b.Mapping.GroupVersionKind.Group
+	return a.Name == b.Name && a.Namespace == b.Namespace && a.Mapping.GroupVersionKind.Kind == b.Mapping.GroupVersionKind.Kind
 }
 
-func ResourceNameNamespaceGroupKind(info *resource.Info) string {
-	return fmt.Sprint(info.Namespace, ":", info.Object.GetObjectKind().GroupVersionKind().GroupKind().String(), "/", info.Name)
-}
-
-// Match by name, namespace, group, kind.
-func SameResources(info1, info2 *resource.Info) bool {
-	return ResourceNameNamespaceGroupKind(info1) == ResourceNameNamespaceGroupKind(info2)
+func ResourceNameNamespaceKind(info *resource.Info) string {
+	return fmt.Sprint(info.Namespace, ":", info.Object.GetObjectKind().GroupVersionKind().Kind, "/", info.Name)
 }

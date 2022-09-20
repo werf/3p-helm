@@ -467,7 +467,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 	}
 
 	if err := rolloutPhaseManager.DeleteOrphanedResources(); err != nil {
-		i.cfg.Log("failure removing resources no longer present in the release: %w", err)
+		i.cfg.Log("failure removing resources no longer present in the release: %s", err)
 	}
 
 	if !i.DisableHooks {

@@ -209,13 +209,12 @@ func (u *Uninstall) Run(name string) (*release.UninstallReleaseResponse, error) 
 			return res, errors.Errorf("uninstallation completed with %d error(s): %s", len(errs), joinErrors(errs))
 		}
 
-		return res, nil
-	}
-
-	if u.DeleteNamespace && !u.KeepHistory {
-		if err := u.cfg.KubeClient.DeleteNamespace(context.Background(), u.Namespace, kube.DeleteOptions{Wait: true, WaitTimeout: u.Timeout}); err != nil {
-			errs = append(errs, errors.Wrapf(err, "unable to delete namespace %s", u.Namespace))
+		if u.DeleteNamespace {
+			if err := u.cfg.KubeClient.DeleteNamespace(context.Background(), u.Namespace, kube.DeleteOptions{Wait: true, WaitTimeout: u.Timeout}); err != nil {
+				return res, errors.Wrapf(err, "unable to delete namespace %s", u.Namespace)
+			}
 		}
+		return res, nil
 	}
 
 	if err := u.cfg.Releases.Update(rel); err != nil {

@@ -206,7 +206,7 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 			break
 		}
 		if lastDeployed != nil {
-			if rel.Version != lastDeployed.Version {
+			if rel.Version < lastDeployed.Version {
 				toDelete = append(toDelete, rel)
 			}
 		} else {

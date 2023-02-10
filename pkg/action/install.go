@@ -109,6 +109,8 @@ type Install struct {
 	Lock sync.Mutex
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	DeployReportPath string
 }
 
 // ChartPathOptions captures common options used for controlling chart paths
@@ -272,6 +274,21 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	rel := i.createRelease(chrt, vals)
+
+	if !i.DryRun && i.DeployReportPath != "" {
+		defer func() {
+			deployReportData, err := release.NewDeployReport().FromRelease(rel).ToJSONData()
+			if err != nil {
+				i.cfg.Log("warning: error creating deploy report data: %s", err)
+				return
+			}
+
+			if err := os.WriteFile(i.DeployReportPath, deployReportData, 0o644); err != nil {
+				i.cfg.Log("warning: error writing deploy report file: %s", err)
+				return
+			}
+		}()
+	}
 
 	var manifestDoc *bytes.Buffer
 	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, i.DryRun)

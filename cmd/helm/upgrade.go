@@ -84,6 +84,7 @@ type UpgradeCmdOptions struct {
 	Timeout           *time.Duration
 	IgnorePending     *bool
 	CleanupOnFail     *bool
+	DeployReportPath *string
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
@@ -144,6 +145,9 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			if opts.CleanupOnFail != nil {
 				client.CleanupOnFail = *opts.CleanupOnFail
 			}
+			if opts.DeployReportPath != nil {
+				client.DeployReportPath = *opts.DeployReportPath
+			}
 
 			client.Namespace = settings.Namespace()
 
@@ -175,6 +179,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 					instClient.SubNotes = client.SubNotes
 					instClient.Description = client.Description
 					instClient.CleanupOnFail = client.CleanupOnFail
+					instClient.DeployReportPath = client.DeployReportPath
 
 					rel, err := runInstall(args, instClient, valueOpts, out)
 					if err != nil {
@@ -301,6 +306,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 	f.BoolVar(&client.SubNotes, "render-subchart-notes", false, "if set, render subchart notes along with the parent")
 	f.StringVar(&client.Description, "description", "", "add a custom description")
 	f.BoolVar(&client.DependencyUpdate, "dependency-update", false, "update dependencies if they are missing before installing the chart")
+	f.StringVar(&client.DeployReportPath, "deploy-report-path", "", "save deploy report in JSON to the specified path")
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 	addValueOptionsFlags(f, valueOpts)
 	bindOutputFlag(cmd, &outfmt)

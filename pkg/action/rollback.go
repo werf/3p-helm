@@ -18,6 +18,7 @@ package action
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -51,6 +52,8 @@ type Rollback struct {
 	StagesSplitter phases.Splitter
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+
+	DeployReportPath string
 }
 
 // NewRollback creates a new Rollback object with the given configuration.
@@ -83,6 +86,21 @@ func (r *Rollback) Run(name string) error {
 	currentRelease, targetRelease, err := r.prepareRollback(name)
 	if err != nil {
 		return err
+	}
+
+	if !r.DryRun && r.DeployReportPath != "" {
+		defer func() {
+			deployReportData, err := release.NewDeployReport().FromRelease(targetRelease).ToJSONData()
+			if err != nil {
+				r.cfg.Log("warning: error creating deploy report data: %s", err)
+				return
+			}
+
+			if err := os.WriteFile(r.DeployReportPath, deployReportData, 0o644); err != nil {
+				r.cfg.Log("warning: error writing deploy report file: %s", err)
+				return
+			}
+		}()
 	}
 
 	if !r.DryRun {

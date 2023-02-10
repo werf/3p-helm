@@ -44,6 +44,7 @@ type RollbackCmdOptions struct {
 	CleanupOnFail  *bool
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
+	DeployReportPath *string
 }
 
 func newRollBackCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
@@ -74,6 +75,9 @@ func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOp
 			if opts.CleanupOnFail != nil {
 				client.CleanupOnFail = *opts.CleanupOnFail
 			}
+			if opts.DeployReportPath != nil {
+				client.DeployReportPath = *opts.DeployReportPath
+			}
 
 			if len(args) > 1 {
 				ver, err := strconv.Atoi(args[1])
@@ -102,6 +106,7 @@ func NewRollbackCmd(cfg *action.Configuration, out io.Writer, opts RollbackCmdOp
 	f.BoolVar(&client.WaitForJobs, "wait-for-jobs", false, "if set and --wait enabled, will wait until all Jobs have been completed before marking the release as successful. It will wait for as long as --timeout")
 	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this rollback when rollback fails")
 	f.IntVar(&client.MaxHistory, "history-max", settings.MaxHistory, "limit the maximum number of revisions saved per release. Use 0 for no limit")
+	f.StringVar(&client.DeployReportPath, "deploy-report-path", "", "save deploy report in JSON to the specified path")
 
 	return cmd
 }

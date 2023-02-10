@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -107,6 +108,8 @@ type Upgrade struct {
 	// Lock to control raceconditions when the process receives a SIGTERM
 	Lock sync.Mutex
 
+	DeployReportPath string
+
 	StagesSplitter              phases.Splitter
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 
@@ -172,6 +175,21 @@ func (u *Upgrade) RunWithContext(ctx context.Context, name string, chart *chart.
 	currentRelease, upgradedRelease, err := u.prepareUpgrade(name, chart, vals)
 	if err != nil {
 		return nil, err
+	}
+
+	if !u.DryRun && u.DeployReportPath != "" {
+		defer func() {
+			deployReportData, err := release.NewDeployReport().FromRelease(upgradedRelease).ToJSONData()
+			if err != nil {
+				u.cfg.Log("warning: error creating deploy report data: %s", err)
+				return
+			}
+
+			if err := os.WriteFile(u.DeployReportPath, deployReportData, 0o644); err != nil {
+				u.cfg.Log("warning: error writing deploy report file: %s", err)
+				return
+			}
+		}()
 	}
 
 	u.cfg.Releases.MaxHistory = u.MaxHistory

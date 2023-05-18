@@ -47,15 +47,29 @@ func SplitManifests(bigFile string) map[string]string {
 	bigFileTmp := strings.TrimSpace(bigFile)
 	docs := sep.Split(bigFileTmp, -1)
 	var count int
-	for _, d := range docs {
-		if d == "" {
+	for _, doc := range docs {
+		doc = strings.TrimSpace(doc)
+
+		if doc == "" {
 			continue
 		}
 
-		d = strings.TrimSpace(d)
-		d += "\n"
+		var contentFound bool
+		for _, line := range strings.Split(doc, "\n") {
+			trimmedLine := strings.TrimSpace(line)
+			if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "#") {
+				contentFound = true
+				break
+			}
+		}
 
-		res[fmt.Sprintf(tpl, count)] = d
+		if !contentFound {
+			continue
+		}
+
+		doc += "\n"
+
+		res[fmt.Sprintf(tpl, count)] = doc
 		count = count + 1
 	}
 	return res

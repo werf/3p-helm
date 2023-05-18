@@ -26,6 +26,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/werf/client"
+	"helm.sh/helm/v3/pkg/werf/kubeclient"
+	"helm.sh/helm/v3/pkg/werf/resourcetracker"
+	"helm.sh/helm/v3/pkg/werf/resourcewaiter"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -95,6 +99,11 @@ type Configuration struct {
 	Capabilities *chartutil.Capabilities
 
 	Log func(string, ...interface{})
+
+	DeferredKubeClient *kubeclient.DeferredKubeClient
+	Client             *client.Client
+	Tracker            *resourcetracker.ResourceTracker
+	Waiter             *resourcewaiter.ResourceWaiter
 }
 
 // renderResources renders the templates in a chart

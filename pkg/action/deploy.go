@@ -18,6 +18,7 @@ package action
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -285,6 +286,11 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return fmt.Errorf("error building resources: %w", err)
 	}
 
+	if os.Getenv("WERF_EXPERIMENTAL_DEPLOY_ENGINE_DEBUG") == "1" {
+		b, _ := json.MarshalIndent(resources, "", "\t")
+		fmt.Printf("DEBUG(resources):\n%s\n", b)
+	}
+
 	// FIXME(ilya-lesikov): additional validation here
 	// FIXME(ilya-lesikov): move it somewhere?
 	var helmHooks []*resource22.HelmHook
@@ -351,6 +357,44 @@ func (d *Deploy) Run(ctx context.Context) error {
 		Build(ctx)
 	if err != nil {
 		return fmt.Errorf("error building deploy plan: %w", err)
+	}
+
+	if os.Getenv("WERF_EXPERIMENTAL_DEPLOY_ENGINE_DEBUG") == "1" {
+		for _, phase := range deployPlan.Phases {
+			fmt.Printf("DEBUG(phaseType): %s\n", phase.Type)
+			for _, operation := range phase.Operations {
+				fmt.Printf("DEBUG(opType): %s\n", operation.Type())
+				switch op := operation.(type) {
+				case *plan.OperationCreate:
+					for _, target := range op.Targets {
+						b, _ := json.MarshalIndent(target.Unstructured().UnstructuredContent(), "", "\t")
+						fmt.Printf("DEBUG(opTarget):\n%s\n", b)
+					}
+				case *plan.OperationUpdate:
+					for _, target := range op.Targets {
+						b, _ := json.MarshalIndent(target.Unstructured().UnstructuredContent(), "", "\t")
+						fmt.Printf("DEBUG(opTarget):\n%s\n", b)
+					}
+				case *plan.OperationRecreate:
+					for _, target := range op.Targets {
+						b, _ := json.MarshalIndent(target.Unstructured().UnstructuredContent(), "", "\t")
+						fmt.Printf("DEBUG(opTarget):\n%s\n", b)
+					}
+				case *plan.OperationDelete:
+					fmt.Printf("DEBUG(opTargets): %s\n", op.Targets)
+				case *plan.OperationCreateReleases:
+					for _, r := range op.Releases {
+						b, _ := json.MarshalIndent(r, "", "\t")
+						fmt.Printf("DEBUG(opTarget):\n%s\n", b)
+					}
+				case *plan.OperationUpdateReleases:
+					for _, r := range op.Releases {
+						b, _ := json.MarshalIndent(r, "", "\t")
+						fmt.Printf("DEBUG(opTarget):\n%s\n", b)
+					}
+				}
+			}
+		}
 	}
 
 	if deployPlan.Empty() {

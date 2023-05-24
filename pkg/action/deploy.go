@@ -287,8 +287,106 @@ func (d *Deploy) Run(ctx context.Context) error {
 	}
 
 	if os.Getenv("WERF_EXPERIMENTAL_DEPLOY_ENGINE_DEBUG") == "1" {
-		b, _ := json.MarshalIndent(resources, "", "\t")
-		fmt.Printf("DEBUG(resources):\n%s\n", b)
+		for _, res := range resources.HelmResources.UpToDate {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceUpToDateLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceUpToDateLive):\n%s\n", b)
+		}
+		for _, res := range resources.HelmResources.Outdated {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceOutdatedLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceOutdatedLive):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Desired.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceOutdatedDesired):\n%s\n", b)
+		}
+		for _, res := range resources.HelmResources.Unsupported {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceUnsupportedLocal):\n%s\n", b)
+		}
+		for _, res := range resources.HelmResources.OutdatedImmutable {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceOutdatedImmutableLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceOutdatedImmutableLive):\n%s\n", b)
+		}
+		for _, res := range resources.HelmResources.NonExisting {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceNonExistingLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Desired.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmResourceNonExistingDesired):\n%s\n", b)
+		}
+		for _, res := range resources.HelmHooks.Matched.UpToDate {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedUpToDateLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedUpToDateLive):\n%s\n", b)
+		}
+		for _, res := range resources.HelmHooks.Matched.Outdated {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedOutdatedLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedOutdatedLive):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Desired.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedOutdatedDesired):\n%s\n", b)
+		}
+		for _, res := range resources.HelmHooks.Matched.OutdatedImmutable {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedOutdatedImmutableLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedOutdatedImmutableLive):\n%s\n", b)
+		}
+		for _, res := range resources.HelmHooks.Matched.NonExisting {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedNonExistingLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Desired.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedNonExistingDesired):\n%s\n", b)
+		}
+		for _, res := range resources.HelmHooks.Matched.Unsupported {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksMatchedUnsupportedLocal):\n%s\n", b)
+		}
+		for _, res := range resources.HelmHooks.Unmatched {
+			b, _ := json.MarshalIndent(res.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(helmHooksUnmatched):\n%s\n", b)
+		}
+		for _, res := range resources.PreloadedCRDs.Outdated {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsOutdatedLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsOutdatedLive):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Desired.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsOutdatedDesired):\n%s\n", b)
+		}
+		for _, res := range resources.PreloadedCRDs.OutdatedImmutable {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsOutdatedImmutableLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsOutdatedImmutableLive):\n%s\n", b)
+		}
+		for _, res := range resources.PreloadedCRDs.UpToDate {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsUpToDateLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsUpToDateLive):\n%s\n", b)
+		}
+		for _, res := range resources.PreloadedCRDs.NonExisting {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsNonExistingLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Desired.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(preloadedCrdsNonExistingDesired):\n%s\n", b)
+		}
+		for _, res := range resources.PrevReleaseHelmResources.Existing {
+			b, _ := json.MarshalIndent(res.Local.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(prevReleaseHelmResourcesExistingLocal):\n%s\n", b)
+			b, _ = json.MarshalIndent(res.Live.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(prevReleaseHelmResourcesExistingLive):\n%s\n", b)
+		}
+		for _, res := range resources.PrevReleaseHelmResources.NonExisting {
+			b, _ := json.MarshalIndent(res.Unstructured().UnstructuredContent(), "", "\t")
+			fmt.Printf("DEBUG(prevReleaseHelmResourcesNonExistingLocal):\n%s\n", b)
+		}
 	}
 
 	// FIXME(ilya-lesikov): additional validation here

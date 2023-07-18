@@ -433,3 +433,15 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 
 	return nil
 }
+
+func (cfg *Configuration) RenderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+	return cfg.renderResources(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, dryRun, enableDNS)
+}
+
+func (cfg *Configuration) GetCapabilities() (*chartutil.Capabilities, error) {
+	return cfg.getCapabilities()
+}
+
+func ErrMissingChart() error {
+	return errMissingChart
+}

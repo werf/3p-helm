@@ -387,7 +387,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	go i.performInstall(rChan, rel, toBeAdopted, resources)
 	go i.handleContext(ctx, rChan, doneChan, rel)
 	result := <-rChan
-	//start preformInstall go routine
+	// start preformInstall go routine
 	return result.r, result.e
 }
 
@@ -455,7 +455,7 @@ func (i *Install) performInstall(c chan<- resultMessage, rel *release.Release, t
 					SkipDeleteIfInvalidOwnership: true,
 					ReleaseName:                  rel.Name,
 					ReleaseNamespace:             rel.Namespace,
-					Force: i.Force,
+					Force:                        i.Force,
 				})
 				if err != nil {
 					return err
@@ -881,4 +881,8 @@ func (c *ChartPathOptions) LocateChart(name string, settings *cli.EnvSettings) (
 		return filename, err
 	}
 	return lname, nil
+}
+
+func (c *ChartPathOptions) SetRegistryClient(cli *registry.Client) {
+	c.registryClient = cli
 }

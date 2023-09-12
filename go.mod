@@ -13,6 +13,7 @@ require (
 	github.com/containerd/containerd v1.6.15
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/distribution/distribution/v3 v3.0.0-20221208165359-362910506bc2
+	github.com/dominikbraun/graph v0.23.0
 	github.com/evanphx/json-patch v5.6.0+incompatible
 	github.com/gobwas/glob v0.2.3
 	github.com/gofrs/flock v0.8.1
@@ -28,7 +29,9 @@ require (
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.2.0
+	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.0
+	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
@@ -38,7 +41,6 @@ require (
 	golang.org/x/crypto v0.7.0
 	golang.org/x/term v0.6.0
 	golang.org/x/text v0.8.0
-	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.26.2
 	k8s.io/apiextensions-apiserver v0.26.2
 	k8s.io/apimachinery v0.26.2
@@ -133,7 +135,6 @@ require (
 	github.com/prometheus/common v0.40.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/samber/lo v1.38.1 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
@@ -144,6 +145,8 @@ require (
 	github.com/yvasiyarov/gorelic v0.0.0-20141212073537-a9bba5b9ab50 // indirect
 	github.com/yvasiyarov/newrelic_platform_go v0.0.0-20140908184405-b21fdbd4370f // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/oauth2 v0.5.0 // indirect
@@ -156,6 +159,7 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/component-base v0.26.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20230217203603-ff9a8e8fa21d // indirect
 	k8s.io/utils v0.0.0-20230209194617-a36077c30491 // indirect

@@ -22,6 +22,7 @@ require (
 	github.com/gookit/color v1.5.2
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.7
 	github.com/mattn/go-shellwords v1.0.12
@@ -36,7 +37,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/werf/kubedog v0.9.11
 	github.com/werf/logboek v0.5.5
 	github.com/xeipuuv/gojsonschema v1.2.0

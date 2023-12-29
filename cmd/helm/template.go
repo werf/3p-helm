@@ -60,6 +60,7 @@ type TemplateCmdOptions struct {
 	IncludeCrds       *bool
 	IsUpgrade         *bool
 	ShowFiles         *[]string
+	KubeVersion       *string
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }
@@ -91,6 +92,13 @@ func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOp
 				client.KubeVersion = parsedKubeVersion
 			}
 
+			if opts.KubeVersion != nil && *opts.KubeVersion != "" {
+				parsedKubeVersion, err := chartutil.ParseKubeVersion(*opts.KubeVersion)
+				if err != nil {
+					return fmt.Errorf("invalid kube version '%s': %s", *opts.KubeVersion, err)
+				}
+				client.KubeVersion = parsedKubeVersion
+			}
 			if opts.ChainPostRenderer != nil {
 				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
 			}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package helm_v3
 
 import (
 	"context"
@@ -29,6 +29,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/errs"
+	"helm.sh/helm/v3/pkg/phases"
+	"helm.sh/helm/v3/pkg/postrender"
 
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/action"
@@ -122,8 +125,8 @@ To see the list of chart repositories, use 'helm repo list'. To search for
 charts in a repository, use 'helm search'.
 `
 
-func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
-	client := action.NewInstall(cfg)
+func NewInstallCmd(cfg *action.Configuration, out io.Writer, opts InstallCmdOptions) (*cobra.Command, *action.Install) {
+	client := action.NewInstall(cfg, opts.StagesSplitter, opts.StagesExternalDepsGenerator)
 	valueOpts := &values.Options{}
 	var outfmt output.Format
 
@@ -149,9 +152,38 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 			if client.DryRunOption == "" {
 				client.DryRunOption = "none"
 			}
+
+			if opts.ChainPostRenderer != nil {
+				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
+			}
+			if opts.ValueOpts != nil {
+				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)
+				valueOpts.StringValues = append(valueOpts.StringValues, opts.ValueOpts.StringValues...)
+				valueOpts.Values = append(valueOpts.Values, opts.ValueOpts.Values...)
+				valueOpts.FileValues = append(valueOpts.FileValues, opts.ValueOpts.FileValues...)
+			}
+			if opts.CreateNamespace != nil {
+				client.CreateNamespace = *opts.CreateNamespace
+			}
+			if opts.Wait != nil {
+				client.Wait = *opts.Wait
+			}
+			if opts.Atomic != nil {
+				client.Atomic = *opts.Atomic
+			}
+			if opts.Timeout != nil {
+				client.Timeout = *opts.Timeout
+			}
+			if opts.CleanupOnFail != nil {
+				client.CleanupOnFail = *opts.CleanupOnFail
+			}
+			if opts.DeployReportPath != nil {
+				client.DeployReportPath = *opts.DeployReportPath
+			}
+
 			rel, err := runInstall(args, client, valueOpts, out)
 			if err != nil {
-				return errors.Wrap(err, "INSTALLATION FAILED")
+				return errors.Wrap(errs.FormatTemplatingError(err), "INSTALLATION FAILED")
 			}
 
 			return outfmt.Write(out, &statusPrinter{rel, settings.Debug, false, false, false})
@@ -162,7 +194,7 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 	bindOutputFlag(cmd, &outfmt)
 	bindPostRenderFlag(cmd, &client.PostRenderer)
 
-	return cmd
+	return cmd, client
 }
 
 func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Install, valueOpts *values.Options) {
@@ -194,6 +226,9 @@ func addInstallFlags(cmd *cobra.Command, f *pflag.FlagSet, client *action.Instal
 	addValueOptionsFlags(f, valueOpts)
 	addChartPathOptionsFlags(f, &client.ChartPathOptions)
 
+	f.BoolVar(&client.CleanupOnFail, "cleanup-on-fail", false, "allow deletion of new resources created in this installation when install fails")
+	f.StringVar(&client.DeployReportPath, "deploy-report-path", "", "save deploy report in JSON to the specified path")
+
 	err := cmd.RegisterFlagCompletionFunc("version", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		requiredArgs := 2
 		if client.GenerateName {
@@ -223,15 +258,27 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 	client.ReleaseName = name
 
-	cp, err := client.ChartPathOptions.LocateChart(chart, settings)
-	if err != nil {
+	var cp string
+	if loader.GlobalLoadOptions.ChartExtender != nil {
+		if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(chart, settings); err != nil {
+			return nil, err
+		} else if isLocated {
+			cp = path
+		} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
+			return nil, err
+		} else {
+			cp = path
+		}
+	} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
 		return nil, err
+	} else {
+		cp = path
 	}
 
 	debug("CHART PATH: %s\n", cp)
 
 	p := getter.All(settings)
-	vals, err := valueOpts.MergeValues(p)
+	vals, err := valueOpts.MergeValues(p, loader.GlobalLoadOptions.ChartExtender)
 	if err != nil {
 		return nil, err
 	}
@@ -343,4 +390,23 @@ func validateDryRunOptionFlag(dryRunOptionFlagValue string) error {
 		return errors.New("Invalid dry-run flag. Flag must one of the following: false, true, none, client, server")
 	}
 	return nil
+}
+
+func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
+	cmd, _ := NewInstallCmd(cfg, out, InstallCmdOptions{})
+	return cmd
+}
+
+type InstallCmdOptions struct {
+	StagesSplitter    phases.Splitter
+	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
+	ValueOpts         *values.Options
+	CreateNamespace   *bool
+	Wait              *bool
+	Atomic            *bool
+	Timeout           *time.Duration
+	CleanupOnFail     *bool
+	DeployReportPath  *string
+
+	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }

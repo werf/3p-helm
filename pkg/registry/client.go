@@ -18,6 +18,7 @@ package registry // import "helm.sh/helm/v3/pkg/registry"
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -104,7 +105,16 @@ func NewClient(options ...ClientOption) (*Client, error) {
 		}
 		if client.plainHTTP {
 			opts = append(opts, auth.WithResolverPlainHTTP())
+
+			opts = append(opts, func(settings *auth.ResolverSettings) {
+				settings.Client.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				}
+			})
 		}
+
 		resolver, err := client.authorizer.ResolverWithOpts(opts...)
 		if err != nil {
 			return nil, err

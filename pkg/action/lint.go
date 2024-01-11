@@ -121,8 +121,10 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 	}
 
 	// Guard: Error out if this is not a chart.
-	if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
-		return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
+	if false {
+		if _, err := os.Stat(filepath.Join(chartPath, "Chart.yaml")); err != nil {
+			return linter, errors.Wrap(err, "unable to check Chart.yaml file in chart")
+		}
 	}
 
 	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion), nil

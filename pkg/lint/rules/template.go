@@ -82,7 +82,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 
 	// lint ignores import-values
 	// See https://github.com/helm/helm/issues/9658
-	if err := chartutil.ProcessDependenciesWithMerge(chart, values); err != nil {
+	if err := chartutil.ProcessDependenciesWithMerge(chart, &values); err != nil {
 		return
 	}
 

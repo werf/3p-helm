@@ -31,7 +31,7 @@ import (
 
 // ChartLoader loads a chart.
 type ChartLoader interface {
-	Load() (*chart.Chart, error)
+	Load(options LoadOptions) (*chart.Chart, error)
 }
 
 // Loader returns a new ChartLoader appropriate for the given chart name
@@ -53,13 +53,17 @@ func Loader(name string) (ChartLoader, error) {
 // and hand off to the appropriate chart reader.
 //
 // If a .helmignore file is present, the directory loader will skip loading any files
-// matching it. But .helmignore is not evaluated when reading out of an archive.
+// matching it.
 func Load(name string) (*chart.Chart, error) {
+	return LoadWithOptions(name, *GlobalLoadOptions)
+}
+
+func LoadWithOptions(name string, opts LoadOptions) (*chart.Chart, error) {
 	l, err := Loader(name)
 	if err != nil {
 		return nil, err
 	}
-	return l.Load()
+	return l.Load(opts)
 }
 
 // BufferedFile represents an archive file buffered for later processing.
@@ -69,9 +73,16 @@ type BufferedFile struct {
 }
 
 // LoadFiles loads from in-memory files.
-func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
+func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
+
+	if options.ChartExtender != nil {
+		c.ChartExtender = options.ChartExtender
+		if err := c.ChartExtender.ChartCreated(c); err != nil {
+			return c, err
+		}
+	}
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
@@ -154,6 +165,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		}
 	}
 
+	if c.ChartExtender != nil {
+		if err := c.ChartExtender.ChartLoaded(convertBufferedFilesForChartExtender(files)); err != nil {
+			return c, err
+		}
+	}
+
 	if c.Metadata == nil {
 		return c, errors.New("Chart.yaml file is missing")
 	}
@@ -174,7 +191,12 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
-			sc, err = LoadArchive(bytes.NewBuffer(file.Data))
+			var subchartOptions LoadOptions
+			if options.SubchartExtenderFactoryFunc != nil {
+				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
+				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
+			}
+			sc, err = LoadArchiveWithOptions(bytes.NewBuffer(file.Data), subchartOptions)
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
@@ -187,7 +209,13 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 				f.Name = parts[1]
 				buff = append(buff, f)
 			}
-			sc, err = LoadFiles(buff)
+
+			var subchartOptions LoadOptions
+			if options.SubchartExtenderFactoryFunc != nil {
+				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
+				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
+			}
+			sc, err = LoadFiles(buff, subchartOptions)
 		}
 
 		if err != nil {
@@ -196,5 +224,42 @@ func LoadFiles(files []*BufferedFile) (*chart.Chart, error) {
 		c.AddDependency(sc)
 	}
 
+	if c.ChartExtender != nil {
+		if err := c.ChartExtender.ChartDependenciesLoaded(); err != nil {
+			return c, err
+		}
+	}
+
 	return c, nil
+}
+
+type LoadOptions struct {
+	ChartExtender               chart.ChartExtender
+	SubchartExtenderFactoryFunc func() chart.ChartExtender
+}
+
+func convertBufferedFilesForChartExtender(files []*BufferedFile) []*chart.ChartExtenderBufferedFile {
+	var res []*chart.ChartExtenderBufferedFile
+	for _, f := range files {
+		f1 := new(chart.ChartExtenderBufferedFile)
+		*f1 = chart.ChartExtenderBufferedFile(*f)
+		res = append(res, f1)
+	}
+	return res
+}
+
+func convertChartExtenderFilesToBufferedFiles(files []*chart.ChartExtenderBufferedFile) []*BufferedFile {
+	var res []*BufferedFile
+	for _, f := range files {
+		f1 := new(BufferedFile)
+		*f1 = BufferedFile(*f)
+		res = append(res, f1)
+	}
+	return res
+}
+
+var GlobalLoadOptions *LoadOptions
+
+func init() {
+	GlobalLoadOptions = &LoadOptions{}
 }

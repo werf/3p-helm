@@ -183,15 +183,16 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 
 	var toDelete []*rspb.Release
 	for _, rel := range h {
+		if lastDeployed == nil {
+			break
+		}
+
 		// once we have enough releases to delete to reach the max, stop
 		if len(h)-len(toDelete) == max {
 			break
 		}
-		if lastDeployed != nil {
-			if rel.Version != lastDeployed.Version {
-				toDelete = append(toDelete, rel)
-			}
-		} else {
+
+		if rel.Version < lastDeployed.Version {
 			toDelete = append(toDelete, rel)
 		}
 	}
@@ -263,4 +264,23 @@ func Init(d driver.Driver) *Storage {
 		Driver: d,
 		Log:    func(_ string, _ ...interface{}) {},
 	}
+}
+
+func (s *Storage) HistoryUntilRevision(name string, ignoreSinceRevision int) ([]*rspb.Release, error) {
+	history, err := s.History(name)
+	if err != nil {
+		return nil, fmt.Errorf("error getting release history: %w", err)
+	}
+
+	relutil.SortByRevision(history)
+
+	resultLength := len(history)
+	for i, release := range history {
+		if release.Version == ignoreSinceRevision {
+			resultLength = i
+			break
+		}
+	}
+
+	return history[:resultLength], nil
 }

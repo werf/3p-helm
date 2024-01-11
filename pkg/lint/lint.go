@@ -35,7 +35,9 @@ func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace
 	chartDir, _ := filepath.Abs(basedir)
 
 	linter := support.Linter{ChartDir: chartDir}
-	rules.Chartfile(&linter)
+	if false {
+		rules.Chartfile(&linter)
+	}
 	rules.ValuesWithOverrides(&linter, values)
 	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion)
 	rules.Dependencies(&linter)

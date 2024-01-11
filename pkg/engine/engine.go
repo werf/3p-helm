@@ -75,7 +75,7 @@ func New(config *rest.Config) Engine {
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap)
+	return e.render(tmap, chrt.ChartExtender)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
@@ -147,6 +147,11 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 // defined by their enclosing contexts.
 func tplFun(parent *template.Template, includedNames map[string]int, strict bool) func(string, interface{}) (string, error) {
 	return func(tpl string, vals interface{}) (string, error) {
+		// No templating required if plain text with no templates passed.
+		if !strings.Contains(tpl, "{{") && !strings.Contains(tpl, "}}") {
+			return tpl, nil
+		}
+
 		t, err := parent.Clone()
 		if err != nil {
 			return "", errors.Wrapf(err, "cannot clone template")
@@ -190,7 +195,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template) {
+func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -244,11 +249,15 @@ func (e Engine) initFunMap(t *template.Template) {
 		}
 	}
 
+	if extender != nil {
+		extender.SetupTemplateFuncs(t, funcMap)
+	}
+
 	t.Funcs(funcMap)
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, err error) {
+func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -270,7 +279,7 @@ func (e Engine) render(tpls map[string]renderable) (rendered map[string]string, 
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t)
+	e.initFunMap(t, extender)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.

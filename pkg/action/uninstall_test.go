@@ -28,7 +28,7 @@ import (
 
 func uninstallAction(t *testing.T) *Uninstall {
 	config := actionConfigFixture(t)
-	unAction := NewUninstall(config)
+	unAction := NewUninstall(config, nil)
 	return unAction
 }
 

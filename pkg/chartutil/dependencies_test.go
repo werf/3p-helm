@@ -358,7 +358,7 @@ func TestProcessDependencyExportValues(t *testing.T) {
 	e["subchart1.subcharta.exported-passthrough.SPExtra17"] = "exported-from-parent-n5"
 	e["subchart1.subcharta.exported-passthrough.SPExtra18"] = "should-be-unchanged"
 
-	if err := processDependencyImportExportValues(c); err != nil {
+	if err := processDependencyImportExportValues(c, true); err != nil {
 		t.Fatalf("processing export values dependencies %v", err)
 	}
 	cc := Values(c.Values)

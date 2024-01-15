@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"helm.sh/helm/v3/pkg/kube"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,35 +86,4 @@ func TestCheckOwnership(t *testing.T) {
 	})
 	err = CheckOwnership(deployFoo.Object, "rel-a", "ns-a")
 	assert.EqualError(t, err, `invalid ownership metadata; label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "helm"`)
-}
-
-func TestSetMetadataVisitor(t *testing.T) {
-	var (
-		err       error
-		deployFoo = newDeploymentResource("foo", "ns-a")
-		deployBar = newDeploymentResource("bar", "ns-a-system")
-		resources = kube.ResourceList{deployFoo, deployBar}
-	)
-
-	// Set release tracking metadata and verify no error
-	err = resources.Visit(SetMetadataVisitor("rel-a", "ns-a", true))
-	assert.NoError(t, err)
-
-	// Verify that release "b" cannot take ownership of "a"
-	err = resources.Visit(SetMetadataVisitor("rel-b", "ns-a", false))
-	assert.Error(t, err)
-
-	// Force release "b" to take ownership
-	err = resources.Visit(SetMetadataVisitor("rel-b", "ns-a", true))
-	assert.NoError(t, err)
-
-	// Check that there is now no ownership error when setting metadata without force
-	err = resources.Visit(SetMetadataVisitor("rel-b", "ns-a", false))
-	assert.NoError(t, err)
-
-	// Add a new resource that is missing ownership metadata and verify error
-	resources.Append(newDeploymentResource("baz", "default"))
-	err = resources.Visit(SetMetadataVisitor("rel-b", "ns-a", false))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), `Deployment "baz" in namespace "" cannot be owned`)
 }

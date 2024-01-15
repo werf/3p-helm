@@ -12,11 +12,11 @@ func NewDeployReport() *DeployReport {
 }
 
 type DeployReport struct {
-	Release string `json:"release,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Revision int `json:"revision,omitempty"`
-	Status Status `json:"status,omitempty"`
-	LastPhase *Phase `json:"last_phase,omitempty"`
+	Release           string    `json:"release,omitempty"`
+	Namespace         string    `json:"namespace,omitempty"`
+	Revision          int       `json:"revision,omitempty"`
+	Status            Status    `json:"status,omitempty"`
+	LastPhase         *Phase    `json:"last_phase,omitempty"`
 	LastStage         *int      `json:"last_stage,omitempty"`
 	FirstDeployedTime time.Time `json:"first_deployed,omitempty"`
 	LastDeployedTime  time.Time `json:"last_deployed,omitempty"`

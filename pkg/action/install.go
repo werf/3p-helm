@@ -402,7 +402,9 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 		if err != nil {
 			return nil, err
 		}
-		if _, err := i.cfg.KubeClient.Create(resourceList, kube.CreateOptions{}); err != nil && !apierrors.IsAlreadyExists(err) {
+		if _, err := i.cfg.KubeClient.Create(resourceList, kube.CreateOptions{
+			SkipIfAlreadyExists: true,
+		}); err != nil && !apierrors.IsAlreadyExists(err) {
 			return nil, err
 		}
 	}

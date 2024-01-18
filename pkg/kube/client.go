@@ -153,8 +153,8 @@ func (c *Client) Create(resources ResourceList, opts CreateOptions) (*Result, er
 	c.Log("creating %d resource(s)", len(resources))
 
 	var fn func(*resource.Info) (performResourceStatus, error)
-	if opts.IgnoreIfAlreadyExists {
-		fn = createResourceIgnoreAlreadyExist
+	if opts.SkipIfAlreadyExists {
+		fn = createResourceSkipIfExists
 	} else {
 		fn = createResource
 	}
@@ -689,13 +689,15 @@ func createResource(info *resource.Info) (performResourceStatus, error) {
 	return resourceStatusCreated, info.Refresh(obj, true)
 }
 
-func createResourceIgnoreAlreadyExist(info *resource.Info) (performResourceStatus, error) {
-	status, err := createResource(info)
-	if apierrors.IsAlreadyExists(err) {
-		return resourceStatusUnknown, nil
+func createResourceSkipIfExists(info *resource.Info) (performResourceStatus, error) {
+	_, err := resource.NewHelper(info.Client, info.Mapping).Get(info.Namespace, info.Name)
+	if apierrors.IsNotFound(err) {
+		return createResource(info)
+	} else if err != nil {
+		return resourceStatusUnknown, err
 	}
 
-	return status, err
+	return resourceStatusUnknown, nil
 }
 
 func deleteResource(info *resource.Info, policy metav1.DeletionPropagation) error {

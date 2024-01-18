@@ -118,7 +118,7 @@ var _ InterfaceDeletionPropagation = (*Client)(nil)
 var _ InterfaceResources = (*Client)(nil)
 
 type CreateOptions struct {
-	IgnoreIfAlreadyExists bool
+	SkipIfAlreadyExists bool
 }
 
 type UpdateOptions struct {

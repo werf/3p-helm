@@ -122,7 +122,7 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 	var err2 error
 
 	// A `helm template` should not talk to the remote cluster. However, commands with the flag
-	//`--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
+	// `--dry-run` with the value of `false`, `none`, or `server` should try to interact with the cluster.
 	// It may break in interesting and exotic ways because other data (e.g. discovery) is mocked.
 	if interactWithRemote && cfg.RESTClientGetter != nil {
 		restConfig, err := cfg.RESTClientGetter.ToRESTConfig()
@@ -423,8 +423,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	return nil
 }
 
-func (cfg *Configuration) RenderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, dryRun, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
-	return cfg.renderResources(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, dryRun, enableDNS)
+func (cfg *Configuration) RenderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+	return cfg.renderResources(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, interactWithRemote, enableDNS)
 }
 
 func (cfg *Configuration) GetCapabilities() (*chartutil.Capabilities, error) {

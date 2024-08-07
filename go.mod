@@ -1,8 +1,7 @@
 module github.com/werf/3p-helm
 
 go 1.21
-
-toolchain go1.21.6
+toolchain go1.22.5
 
 require (
 	github.com/BurntSushi/toml v1.3.2
@@ -38,14 +37,14 @@ require (
 	golang.org/x/crypto v0.21.0
 	golang.org/x/term v0.18.0
 	golang.org/x/text v0.14.0
-	k8s.io/api v0.29.3
-	k8s.io/apiextensions-apiserver v0.29.0
-	k8s.io/apimachinery v0.29.3
-	k8s.io/apiserver v0.29.2
-	k8s.io/cli-runtime v0.29.3
-	k8s.io/client-go v0.29.3
+	k8s.io/api v0.30.3
+	k8s.io/apiextensions-apiserver v0.30.3
+	k8s.io/apimachinery v0.30.3
+	k8s.io/apiserver v0.30.3
+	k8s.io/cli-runtime v0.30.3
+	k8s.io/client-go v0.30.3
 	k8s.io/klog/v2 v2.120.1
-	k8s.io/kubectl v0.29.3
+	k8s.io/kubectl v0.30.3
 	oras.land/oras-go v1.2.5
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -172,7 +171,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
 	go.starlark.net v0.0.0-20231121155337-90ade8b19d09 // indirect
 	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
@@ -188,8 +187,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
-	k8s.io/component-base v0.29.3 // indirect
-	k8s.io/kube-openapi v0.0.0-20240105020646-a37d4de58910 // indirect
+	k8s.io/component-base v0.30.3 // indirect
+	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.16.0 // indirect

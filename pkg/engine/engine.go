@@ -27,6 +27,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"github.com/werf/3p-helm/pkg/werfcompat"
 	"k8s.io/client-go/rest"
 
 	"github.com/werf/3p-helm/pkg/chart"
@@ -73,35 +74,35 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e Engine) Render(chrt *chart.Chart, values chartutil.Values, secrets *werfcompat.Secrets) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap, chrt.ChartExtender)
+	return e.render(tmap, chrt.ChartExtender, secrets)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
-func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
-	return new(Engine).Render(chrt, values)
+func Render(chrt *chart.Chart, values chartutil.Values, secrets *werfcompat.Secrets) (map[string]string, error) {
+	return new(Engine).Render(chrt, values, secrets)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
-func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config, secrets *werfcompat.Secrets) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.Render(chrt, values, secrets)
 }
 
 // RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
-func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider, secrets *werfcompat.Secrets) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.Render(chrt, values, secrets)
 }
 
 // renderable is an object that can be rendered.
@@ -195,7 +196,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender) {
+func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender, secrets *werfcompat.Secrets) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -249,15 +250,30 @@ func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender) {
 		}
 	}
 
-	if extender != nil {
-		extender.SetupTemplateFuncs(t, funcMap)
+	funcMap["werf_secret_file"] = func(secretRelativePath string) (string, error) {
+		if path.IsAbs(secretRelativePath) {
+			return "", fmt.Errorf("expected relative secret file path, given path %v", secretRelativePath)
+		}
+
+		decodedData, ok := secrets.DecryptedSecretFilesData[secretRelativePath]
+
+		if !ok {
+			var secretFiles []string
+			for key := range secrets.DecryptedSecretFilesData {
+				secretFiles = append(secretFiles, key)
+			}
+
+			return "", fmt.Errorf("secret file %q not found, you may use one of the following: %q", secretRelativePath, strings.Join(secretFiles, "', '"))
+		}
+
+		return decodedData, nil
 	}
 
 	t.Funcs(funcMap)
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender) (rendered map[string]string, err error) {
+func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender, secrets *werfcompat.Secrets) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -279,7 +295,7 @@ func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender)
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t, extender)
+	e.initFunMap(t, extender, secrets)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.

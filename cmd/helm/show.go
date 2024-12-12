@@ -25,7 +25,6 @@ import (
 
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/chart/loader"
 )
 
 const showDesc = `
@@ -220,17 +219,7 @@ func runShow(args []string, client *action.Show) (string, error) {
 	}
 
 	var cp string
-	if loader.GlobalLoadOptions.ChartExtender != nil {
-		if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(args[0], settings); err != nil {
-			return "", err
-		} else if isLocated {
-			cp = path
-		} else if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
-			return "", err
-		} else {
-			cp = path
-		}
-	} else if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
+	if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
 		return "", err
 	} else {
 		cp = path

@@ -224,7 +224,7 @@ func TestDownloadAll(t *testing.T) {
 		RepositoryCache:  repoCache,
 		ChartPath:        chartPath,
 	}
-	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"))
+	signtest, err := loader.LoadDir(filepath.Join("testdata", "signtest"), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestDownloadAll(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"))
+	local, err := loader.LoadDir(filepath.Join("testdata", "local-subchart"), opts)
 	if err != nil {
 		t.Fatal(err)
 	}

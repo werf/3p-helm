@@ -83,7 +83,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				return nil, err
 			}
 
-			ch, err := loader.LoadDir(chartpath)
+			ch, err := loader.LoadDir(chartpath, opts)
 			if err != nil {
 				return nil, err
 			}

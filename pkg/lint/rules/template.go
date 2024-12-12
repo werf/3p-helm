@@ -62,7 +62,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 	}
 
 	// Load chart and parse templates
-	chart, err := loader.Load(linter.ChartDir)
+	chart, err := loader.Load(linter.ChartDir, loader.LoadOptions{})
 
 	chartLoaded := linter.RunLinterRule(support.ErrorSev, fpath, err)
 
@@ -98,7 +98,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 	}
 	var e engine.Engine
 	e.LintMode = true
-	renderedContentMap, err := e.Render(chart, valuesToRender)
+	renderedContentMap, err := e.Render(chart, valuesToRender, secrets)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
 

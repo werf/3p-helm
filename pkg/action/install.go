@@ -335,7 +335,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, secrets)
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()

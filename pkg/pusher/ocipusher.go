@@ -56,7 +56,7 @@ func (pusher *OCIPusher) push(chartRef, href string) error {
 		return errors.New("cannot push directory, must provide chart archive (.tgz)")
 	}
 
-	meta, err := loader.Load(chartRef)
+	meta, err := loader.Load(chartRef, loader.LoadOptions{})
 	if err != nil {
 		return err
 	}

@@ -233,7 +233,7 @@ func (m *Manager) loadChartDir() (*chart.Chart, error) {
 	} else if !fi.IsDir() {
 		return nil, errors.New("only unpacked charts can be updated")
 	}
-	return loader.LoadDir(m.ChartPath)
+	return loader.LoadDir(m.ChartPath, opts)
 }
 
 // resolve takes a list of dependencies and translates them into an exact version to download.
@@ -285,7 +285,7 @@ func (m *Manager) downloadAll(deps []*chart.Dependency) error {
 			fmt.Fprintf(m.Out, "Dependency %s did not declare a repository. Assuming it exists in the charts directory\n", dep.Name)
 			// NOTE: we are only validating the local dependency conforms to the constraints. No copying to tmpPath is necessary.
 			chartPath := filepath.Join(destPath, dep.Name)
-			ch, err := loader.LoadDir(chartPath)
+			ch, err := loader.LoadDir(chartPath, opts)
 			if err != nil {
 				return fmt.Errorf("unable to load chart '%s': %v", chartPath, err)
 			}
@@ -432,7 +432,7 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 		sourcefile := filepath.Join(source, filename)
 		destfile := filepath.Join(dest, filename)
 		existsInSourceDirectory[filename] = true
-		if _, err := loader.LoadFile(sourcefile); err != nil {
+		if _, err := loader.LoadFile(sourcefile, opts); err != nil {
 			fmt.Fprintf(m.Out, "Could not verify %s for moving: %s (Skipping)", sourcefile, err)
 			continue
 		}
@@ -448,7 +448,7 @@ func (m *Manager) safeMoveDeps(deps []*chart.Dependency, source, dest string) er
 	for _, file := range destFiles {
 		if !file.IsDir() && !existsInSourceDirectory[file.Name()] {
 			fname := filepath.Join(dest, file.Name())
-			ch, err := loader.LoadFile(fname)
+			ch, err := loader.LoadFile(fname, opts)
 			if err != nil {
 				fmt.Fprintf(m.Out, "Could not verify %s for deletion: %s (Skipping)\n", fname, err)
 				continue
@@ -875,7 +875,7 @@ func tarFromLocalDir(chartpath, name, repo, version, destPath string) (string, e
 		return "", err
 	}
 
-	ch, err := loader.LoadDir(origPath)
+	ch, err := loader.LoadDir(origPath, opts)
 	if err != nil {
 		return "", err
 	}

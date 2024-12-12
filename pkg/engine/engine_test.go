@@ -116,7 +116,7 @@ func TestRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Errorf("Failed to render templates: %s", err)
 	}
@@ -163,7 +163,7 @@ func TestRenderRefsOrdering(t *testing.T) {
 	}
 
 	for i := 0; i < 100; i++ {
-		out, err := Render(parentChart, chartutil.Values{})
+		out, err := Render(parentChart, chartutil.Values{}, secrets)
 		if err != nil {
 			t.Fatalf("Failed to render templates: %s", err)
 		}
@@ -188,7 +188,7 @@ func TestRenderInternals(t *testing.T) {
 		"three": {tpl: `{{template "two" dict "Value" "three"}}`, vals: vals},
 	}
 
-	out, err := new(Engine).render(tpls, nil)
+	out, err := new(Engine).render(tpls, nil, secrets)
 	if err != nil {
 		t.Fatalf("Failed template rendering: %s", err)
 	}
@@ -233,7 +233,7 @@ func TestRenderWithDNS(t *testing.T) {
 
 	var e Engine
 	e.EnableDNS = true
-	out, err := e.Render(c, v)
+	out, err := e.Render(c, v, secrets)
 	if err != nil {
 		t.Errorf("Failed to render templates: %s", err)
 	}
@@ -368,7 +368,7 @@ func TestRenderWithClientProvider(t *testing.T) {
 		t.Fatalf("Failed to coalesce values: %s", err)
 	}
 
-	out, err := RenderWithClientProvider(c, v, provider)
+	out, err := RenderWithClientProvider(c, v, provider, secrets)
 	if err != nil {
 		t.Errorf("Failed to render templates: %s", err)
 	}
@@ -412,7 +412,7 @@ func TestRenderWithClientProvider_error(t *testing.T) {
 			},
 		},
 	}
-	_, err = RenderWithClientProvider(c, v, provider)
+	_, err = RenderWithClientProvider(c, v, provider, secrets)
 	if err == nil || !strings.Contains(err.Error(), "kaboom") {
 		t.Errorf("Expected error from client provider when rendering, got %q", err)
 	}
@@ -432,7 +432,7 @@ func TestParallelRenderInternals(t *testing.T) {
 					vals: map[string]interface{}{"val": tt},
 				},
 			}
-			out, err := e.render(tpls, nil)
+			out, err := e.render(tpls, nil, secrets)
 			if err != nil {
 				t.Errorf("Failed to render %s: %s", tt, err)
 			}
@@ -451,7 +451,7 @@ func TestParseErrors(t *testing.T) {
 	tplsUndefinedFunction := map[string]renderable{
 		"undefined_function": {tpl: `{{foo}}`, vals: vals},
 	}
-	_, err := new(Engine).render(tplsUndefinedFunction, nil)
+	_, err := new(Engine).render(tplsUndefinedFunction, nil, secrets)
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
@@ -514,7 +514,7 @@ linebreak`,
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := new(Engine).render(tt.tpls, nil)
+			_, err := new(Engine).render(tt.tpls, nil, secrets)
 			if err == nil {
 				t.Fatalf("Expected failures while rendering: %s", err)
 			}
@@ -532,7 +532,7 @@ func TestFailErrors(t *testing.T) {
 	tplsFailed := map[string]renderable{
 		"failtpl": {tpl: failtpl, vals: vals},
 	}
-	_, err := new(Engine).render(tplsFailed, nil)
+	_, err := new(Engine).render(tplsFailed, nil, secrets)
 	if err == nil {
 		t.Fatalf("Expected failures while rendering: %s", err)
 	}
@@ -543,7 +543,7 @@ func TestFailErrors(t *testing.T) {
 
 	var e Engine
 	e.LintMode = true
-	out, err := e.render(tplsFailed, nil)
+	out, err := e.render(tplsFailed, nil, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -600,7 +600,7 @@ func TestChartValuesContainsIsRoot(t *testing.T) {
 	}
 	ch1.AddDependency(dep1)
 
-	out, err := Render(ch1, chartutil.Values{})
+	out, err := Render(ch1, chartutil.Values{}, secrets)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -631,7 +631,7 @@ func TestRenderDependency(t *testing.T) {
 		},
 	})
 
-	out, err := Render(ch, map[string]interface{}{})
+	out, err := Render(ch, map[string]interface{}{}, secrets)
 	if err != nil {
 		t.Fatalf("failed to render chart: %s", err)
 	}
@@ -719,7 +719,7 @@ func TestRenderNestedValues(t *testing.T) {
 
 	t.Logf("Calculated values: %v", inject)
 
-	out, err := Render(outer, inject)
+	out, err := Render(outer, inject, secrets)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -782,7 +782,7 @@ func TestRenderBuiltinValues(t *testing.T) {
 
 	t.Logf("Calculated values: %v", outer)
 
-	out, err := Render(outer, inject)
+	out, err := Render(outer, inject, secrets)
 	if err != nil {
 		t.Fatalf("failed to render templates: %s", err)
 	}
@@ -827,7 +827,7 @@ func TestAlterFuncMap_include(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -837,7 +837,7 @@ func TestAlterFuncMap_include(t *testing.T) {
 		t.Errorf("Expected %q, got %q (%v)", expect, got, out)
 	}
 
-	_, err = Render(d, v)
+	_, err = Render(d, v, secrets)
 	expectErrName := "nested/templates/quote"
 	if err == nil {
 		t.Errorf("Expected err of nested reference name: %v", expectErrName)
@@ -864,7 +864,7 @@ func TestAlterFuncMap_require(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -891,7 +891,7 @@ func TestAlterFuncMap_require(t *testing.T) {
 	}
 	var e Engine
 	e.LintMode = true
-	out, err = e.Render(c, lintValues)
+	out, err = e.Render(c, lintValues, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -924,7 +924,7 @@ func TestAlterFuncMap_tpl(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -953,7 +953,7 @@ func TestAlterFuncMap_tplfunc(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -982,7 +982,7 @@ func TestAlterFuncMap_tplinclude(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1012,7 +1012,7 @@ func TestRenderRecursionLimit(t *testing.T) {
 	}
 	expectErr := "rendering template has a nested reference name: recursion: unable to execute template"
 
-	_, err := Render(c, v)
+	_, err := Render(c, v, secrets)
 	if err == nil || !strings.HasSuffix(err.Error(), expectErr) {
 		t.Errorf("Expected err with suffix: %s", expectErr)
 	}
@@ -1034,7 +1034,7 @@ func TestRenderRecursionLimit(t *testing.T) {
 		},
 	}
 
-	out, err := Render(d, v)
+	out, err := Render(d, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1073,7 +1073,7 @@ func TestRenderLoadTemplateForTplFromFile(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1100,7 +1100,7 @@ func TestRenderTplEmpty(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1145,7 +1145,7 @@ func TestRenderTplTemplateNames(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1208,7 +1208,7 @@ func TestRenderTplRedefines(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1248,7 +1248,7 @@ func TestRenderTplMissingKey(t *testing.T) {
 		},
 	}
 
-	out, err := Render(c, v)
+	out, err := Render(c, v, secrets)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1284,7 +1284,7 @@ func TestRenderTplMissingKeyString(t *testing.T) {
 	e := new(Engine)
 	e.Strict = true
 
-	out, err := e.Render(c, v)
+	out, err := e.Render(c, v, secrets)
 	if err == nil {
 		t.Errorf("Expected error, got %v", out)
 		return

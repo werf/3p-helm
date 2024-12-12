@@ -47,7 +47,7 @@ func TestCreateCmd(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := loader.LoadDir(cname)
+	c, err := loader.LoadDir(cname, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestCreateStarterCmd(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := loader.LoadDir(cname)
+	c, err := loader.LoadDir(cname, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestCreateStarterAbsoluteCmd(t *testing.T) {
 		t.Fatalf("chart is not directory")
 	}
 
-	c, err := loader.LoadDir(cname)
+	c, err := loader.LoadDir(cname, opts)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package registry // import "helm.sh/helm/v3/pkg/registry"
+package registry // import "github.com/werf/3p-helm/pkg/registry"
 
 import (
 	"bytes"
@@ -98,7 +98,7 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 
 // extractChartMeta is used to extract a chart metadata from a byte array
 func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
-	ch, err := loader.LoadArchive(bytes.NewReader(chartData))
+	ch, err := loader.LoadArchive(bytes.NewReader(chartData), opts)
 	if err != nil {
 		return nil, err
 	}

@@ -209,17 +209,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			}
 
 			var chartPath string
-			if loader.GlobalLoadOptions.ChartExtender != nil {
-				if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(args[1], settings); err != nil {
-					return err
-				} else if isLocated {
-					chartPath = path
-				} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
-					return err
-				} else {
-					chartPath = path
-				}
-			} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
+			if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
 				return err
 			} else {
 				chartPath = path
@@ -237,7 +227,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			}
 
 			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
+			ch, err := loader.Load(chartPath, loader.LoadOptions{})
 			if err != nil {
 				return err
 			}
@@ -259,7 +249,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 							return err
 						}
 						// Reload the chart with the updated Chart.lock file.
-						if ch, err = loader.Load(chartPath); err != nil {
+						if ch, err = loader.Load(chartPath, loader.LoadOptions{}); err != nil {
 							return errors.Wrap(err, "failed reloading chart after repo update")
 						}
 					} else {

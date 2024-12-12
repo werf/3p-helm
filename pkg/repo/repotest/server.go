@@ -176,7 +176,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 	}
 
 	// valid chart
-	ch, err := loader.LoadDir(filepath.Join(srv.Dir, "oci-dependent-chart"))
+	ch, err := loader.LoadDir(filepath.Join(srv.Dir, "oci-dependent-chart"), opts)
 	if err != nil {
 		t.Fatal("error loading chart")
 	}

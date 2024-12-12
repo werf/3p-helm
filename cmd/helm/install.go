@@ -263,17 +263,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	client.ReleaseName = name
 
 	var cp string
-	if loader.GlobalLoadOptions.ChartExtender != nil {
-		if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(chart, settings); err != nil {
-			return nil, err
-		} else if isLocated {
-			cp = path
-		} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
-			return nil, err
-		} else {
-			cp = path
-		}
-	} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
+	if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
 		return nil, err
 	} else {
 		cp = path
@@ -288,7 +278,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	}
 
 	// Check chart dependencies to make sure all are present in /charts
-	chartRequested, err := loader.Load(cp)
+	chartRequested, err := loader.Load(cp, loader.LoadOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +313,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 					return nil, err
 				}
 				// Reload the chart with the updated Chart.lock file.
-				if chartRequested, err = loader.Load(cp); err != nil {
+				if chartRequested, err = loader.Load(cp, loader.LoadOptions{}); err != nil {
 					return nil, errors.Wrap(err, "failed reloading chart after repo update")
 				}
 			} else {

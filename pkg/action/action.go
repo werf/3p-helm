@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/werf/3p-helm/pkg/werfcompat"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
@@ -103,7 +104,7 @@ type Configuration struct {
 // TODO: As part of the refactor the duplicate code in cmd/helm/template.go should be removed
 //
 //	This code has to do with writing files to disk.
-func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
+func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool, secrets *werfcompat.Secrets) ([]*release.Hook, *bytes.Buffer, string, error) {
 	hs := []*release.Hook{}
 	b := bytes.NewBuffer(nil)
 
@@ -131,11 +132,11 @@ func (cfg *Configuration) renderResources(ch *chart.Chart, values chartutil.Valu
 		}
 		e := engine.New(restConfig)
 		e.EnableDNS = enableDNS
-		files, err2 = e.Render(ch, values)
+		files, err2 = e.Render(ch, values, secrets)
 	} else {
 		var e engine.Engine
 		e.EnableDNS = enableDNS
-		files, err2 = e.Render(ch, values)
+		files, err2 = e.Render(ch, values, secrets)
 	}
 
 	if err2 != nil {
@@ -423,8 +424,8 @@ func (cfg *Configuration) Init(getter genericclioptions.RESTClientGetter, namesp
 	return nil
 }
 
-func (cfg *Configuration) RenderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool) ([]*release.Hook, *bytes.Buffer, string, error) {
-	return cfg.renderResources(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, interactWithRemote, enableDNS)
+func (cfg *Configuration) RenderResources(ch *chart.Chart, values chartutil.Values, releaseName, outputDir string, subNotes, useReleaseName, includeCrds bool, pr postrender.PostRenderer, interactWithRemote, enableDNS bool, secrets *werfcompat.Secrets) ([]*release.Hook, *bytes.Buffer, string, error) {
+	return cfg.renderResources(ch, values, releaseName, outputDir, subNotes, useReleaseName, includeCrds, pr, interactWithRemote, enableDNS, secrets)
 }
 
 func (cfg *Configuration) GetCapabilities() (*chartutil.Capabilities, error) {

@@ -43,19 +43,11 @@ func concatPrefix(a, b string) string {
 //   - A chart has access to all of the variables for it, as well as all of
 //     the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
-	if chrt.ChartExtender != nil {
-		if newVals, err := chrt.ChartExtender.MakeValues(vals); err != nil {
-			return vals, err
-		} else {
-			vals = newVals
-		}
-	}
-
-	valsCopy, err := copyValues(vals)
+	vals, err := copyValues(vals)
 	if err != nil {
 		return vals, err
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", false)
+	return coalesce(log.Printf, chrt, vals, "", false)
 }
 
 // MergeValues is used to merge the values in a chart and its subcharts. This
@@ -73,19 +65,11 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 // logic need to retain them for when Coalescing will happen again later in the
 // business logic.
 func MergeValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
-	if chrt.ChartExtender != nil {
-		if newVals, err := chrt.ChartExtender.MakeValues(vals); err != nil {
-			return vals, err
-		} else {
-			vals = newVals
-		}
-	}
-
-	valsCopy, err := copyValues(vals)
+	vals, err := copyValues(vals)
 	if err != nil {
 		return vals, err
 	}
-	return coalesce(log.Printf, chrt, valsCopy, "", true)
+	return coalesce(log.Printf, chrt, vals, "", true)
 }
 
 func copyValues(vals map[string]interface{}) (Values, error) {
@@ -306,4 +290,48 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 		}
 	}
 	return dst
+}
+
+func CoalesceValuesExtra(chrt *chart.Chart, vals map[string]interface{}, serviceVals map[string]interface{}, secretVals map[string]interface{}) (Values, error) {
+	var resultVals map[string]interface{}
+	if chrt.IsRoot() && len(serviceVals) > 0 {
+		resultVals = serviceVals
+	} else {
+		resultVals = make(map[string]interface{})
+	}
+
+	if len(secretVals) > 0 {
+		resultVals = CoalesceTables(resultVals, secretVals)
+	}
+
+	resultVals = CoalesceTables(resultVals, vals)
+
+	resultVals, err := copyValues(resultVals)
+	if err != nil {
+		return resultVals, err
+	}
+
+	return coalesce(log.Printf, chrt, resultVals, "", false)
+}
+
+func MergeValuesExtra(chrt *chart.Chart, vals map[string]interface{}, serviceVals map[string]interface{}, secretVals map[string]interface{}) (Values, error) {
+	var resultVals map[string]interface{}
+	if chrt.IsRoot() && len(serviceVals) > 0 {
+		resultVals = serviceVals
+	} else {
+		resultVals = make(map[string]interface{})
+	}
+
+	if len(secretVals) > 0 {
+		resultVals = MergeTables(resultVals, secretVals)
+	}
+
+	resultVals = MergeTables(resultVals, vals)
+
+	resultVals, err := copyValues(resultVals)
+	if err != nil {
+		return resultVals, err
+	}
+
+	return coalesce(log.Printf, chrt, resultVals, "", true)
 }

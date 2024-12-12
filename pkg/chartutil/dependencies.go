@@ -28,12 +28,12 @@ import (
 // ProcessDependencies checks through this chart's dependencies, processing accordingly.
 //
 // TODO: For Helm v4 this can be combined with or turned into ProcessDependenciesWithMerge
-func ProcessDependencies(c *chart.Chart, v *map[string]interface{}) error {
-	if err := processDependencyExportExtraValues(c, v, false); err != nil {
+func ProcessDependencies(c *chart.Chart, v *map[string]interface{}, serviceVals map[string]interface{}, secretVals map[string]interface{}) error {
+	if err := processDependencyExportExtraValues(c, v, serviceVals, secretVals, false); err != nil {
 		return err
 	}
 
-	if err := processDependencyEnabled(c, *v, ""); err != nil {
+	if err := processDependencyEnabled(c, *v, serviceVals, secretVals, ""); err != nil {
 		return err
 	}
 
@@ -44,11 +44,11 @@ func ProcessDependencies(c *chart.Chart, v *map[string]interface{}) error {
 // It is similar to ProcessDependencies but it does not remove nil values during
 // the import/export handling process.
 func ProcessDependenciesWithMerge(c *chart.Chart, v *map[string]interface{}) error {
-	if err := processDependencyExportExtraValues(c, v, true); err != nil {
+	if err := processDependencyExportExtraValues(c, v, serviceVals, secretVals, true); err != nil {
 		return err
 	}
 
-	if err := processDependencyEnabled(c, *v, ""); err != nil {
+	if err := processDependencyEnabled(c, *v, serviceVals, secretVals, ""); err != nil {
 		return err
 	}
 
@@ -139,7 +139,7 @@ func getAliasDependency(charts []*chart.Chart, dep *chart.Dependency) *chart.Cha
 }
 
 // processDependencyEnabled removes disabled charts from dependencies
-func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, path string) error {
+func processDependencyEnabled(c *chart.Chart, v map[string]interface{}, serviceVals map[string]interface{}, secretVals map[string]interface{}, path string) error {
 	if c.Metadata.Dependencies == nil {
 		return nil
 	}
@@ -177,7 +177,7 @@ Loop:
 	for _, lr := range c.Metadata.Dependencies {
 		lr.Enabled = true
 	}
-	cvals, err := CoalesceValues(c, v)
+	cvals, err := CoalesceValuesExtra(c, v, serviceVals, secretVals)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ Loop:
 	// recursively call self to process sub dependencies
 	for _, t := range cd {
 		subpath := path + t.Metadata.Name + "."
-		if err := processDependencyEnabled(t, cvals, subpath); err != nil {
+		if err := processDependencyEnabled(t, cvals, serviceVals, secretVals, subpath); err != nil {
 			return err
 		}
 	}
@@ -715,14 +715,14 @@ func processDependencyExportValues(c *chart.Chart, merge bool) error {
 }
 
 // Update extra Values overrides according to export-values directive, if needed.
-func processDependencyExportExtraValues(c *chart.Chart, extraVals *map[string]interface{}, merge bool) error {
+func processDependencyExportExtraValues(c *chart.Chart, extraVals *map[string]interface{}, serviceVals map[string]interface{}, secretVals map[string]interface{}, merge bool) error {
 	if err := processExportExtraValues(c, extraVals, merge); err != nil {
 		return err
 	}
 
 	for _, d := range c.Dependencies() {
 		// recurse
-		if err := processDependencyExportExtraValues(d, extraVals, merge); err != nil {
+		if err := processDependencyExportExtraValues(d, extraVals, serviceVals, secretVals, merge); err != nil {
 			return err
 		}
 	}

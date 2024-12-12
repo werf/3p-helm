@@ -37,7 +37,7 @@ func TestLoadDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestLoadDirWithDevNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	if _, err := l.Load(*GlobalLoadOptions); err == nil {
+	if _, err := l.Load(opts); err == nil {
 		t.Errorf("packages with an irregular file (/dev/null) should not load")
 	}
 }
@@ -76,7 +76,7 @@ func TestLoadDirWithSymlink(t *testing.T) {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
 
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -139,7 +139,7 @@ func TestLoadDirWithUTFBOM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -155,7 +155,7 @@ func TestLoadArchiveWithUTFBOM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -171,7 +171,7 @@ func TestLoadV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -184,7 +184,7 @@ func TestLoadFileV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -197,7 +197,7 @@ func TestLoadFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -222,7 +222,7 @@ func TestLoadFiles_BadCases(t *testing.T) {
 			},
 			expectError: "validation: chart.metadata.apiVersion is required"},
 	} {
-		_, err := LoadFiles(tt.bufferedFiles, *GlobalLoadOptions)
+		_, err := LoadFiles(tt.bufferedFiles, opts)
 		if err == nil {
 			t.Fatal("expected error when load illegal files")
 		}
@@ -273,7 +273,7 @@ icon: https://example.com/64x64.png
 		},
 	}
 
-	c, err := LoadFiles(goodFiles, *GlobalLoadOptions)
+	c, err := LoadFiles(goodFiles, opts)
 	if err != nil {
 		t.Errorf("Expected good files to be loaded, got %v", err)
 	}
@@ -298,7 +298,7 @@ icon: https://example.com/64x64.png
 		t.Errorf("Expected number of templates == 2, got %d", len(c.Templates))
 	}
 
-	if _, err = LoadFiles([]*BufferedFile{}, *GlobalLoadOptions); err == nil {
+	if _, err = LoadFiles([]*BufferedFile{}, opts); err == nil {
 		t.Fatal("Expected err to be non-nil")
 	}
 	if err.Error() != "Chart.yaml file is missing" {
@@ -362,7 +362,7 @@ icon: https://example.com/64x64.png
 		log.SetOutput(stderr)
 	}()
 
-	_, err = LoadFiles(goodFiles, *GlobalLoadOptions)
+	_, err = LoadFiles(goodFiles, opts)
 	if err != nil {
 		t.Errorf("Expected good files to be loaded, got %v", err)
 	}
@@ -379,7 +379,7 @@ icon: https://example.com/64x64.png
 // Packaging the chart on a Windows machine will produce an
 // archive that has \\ as delimiters. Test that we support these archives
 func TestLoadFileBackslash(t *testing.T) {
-	c, err := Load("testdata/frobnitz_backslash-1.2.3.tgz")
+	c, err := Load("testdata/frobnitz_backslash-1.2.3.tgz", LoadOptions{})
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -393,7 +393,7 @@ func TestLoadV2WithReqs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
-	c, err := l.Load(*GlobalLoadOptions)
+	c, err := l.Load(opts)
 	if err != nil {
 		t.Fatalf("Failed to load testdata: %s", err)
 	}
@@ -454,7 +454,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	} {
 		illegalChart := filepath.Join(tmpdir, tt.chartname)
 		writeTar(illegalChart, tt.internal, []byte("hello: world"))
-		_, err := Load(illegalChart)
+		_, err := Load(illegalChart, LoadOptions{})
 		if err == nil {
 			t.Fatal("expected error when unpacking illegal files")
 		}
@@ -466,7 +466,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// Make sure that absolute path gets interpreted as relative
 	illegalChart := filepath.Join(tmpdir, "abs-path.tgz")
 	writeTar(illegalChart, "/Chart.yaml", []byte("hello: world"))
-	_, err := Load(illegalChart)
+	_, err := Load(illegalChart, LoadOptions{})
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
 	}
@@ -474,7 +474,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// And just to validate that the above was not spurious
 	illegalChart = filepath.Join(tmpdir, "abs-path2.tgz")
 	writeTar(illegalChart, "files/whatever.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	_, err = Load(illegalChart, LoadOptions{})
 	if err.Error() != "Chart.yaml file is missing" {
 		t.Errorf("Unexpected error message: %s", err)
 	}
@@ -482,7 +482,7 @@ func TestLoadInvalidArchive(t *testing.T) {
 	// Finally, test that drive letter gets stripped off on Windows
 	illegalChart = filepath.Join(tmpdir, "abs-winpath.tgz")
 	writeTar(illegalChart, "c:\\Chart.yaml", []byte("hello: world"))
-	_, err = Load(illegalChart)
+	_, err = Load(illegalChart, LoadOptions{})
 	if err.Error() != "validation: chart.metadata.name is required" {
 		t.Error(err)
 	}

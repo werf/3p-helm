@@ -26,20 +26,20 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/phases/phasemanagers"
-	"github.com/werf/3p-helm/pkg/phases/stages"
+	"github.com/werf/3p-helm-legacy/pkg/phases"
+	"github.com/werf/3p-helm-legacy/pkg/phases/phasemanagers"
+	"github.com/werf/3p-helm-legacy/pkg/phases/stages"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chartutil"
-	"github.com/werf/3p-helm/pkg/kube"
-	"github.com/werf/3p-helm/pkg/postrender"
-	"github.com/werf/3p-helm/pkg/registry"
-	"github.com/werf/3p-helm/pkg/release"
-	"github.com/werf/3p-helm/pkg/releaseutil"
-	"github.com/werf/3p-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-legacy/pkg/chartutil"
+	"github.com/werf/3p-helm-legacy/pkg/kube"
+	"github.com/werf/3p-helm-legacy/pkg/postrender"
+	"github.com/werf/3p-helm-legacy/pkg/registry"
+	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-legacy/pkg/releaseutil"
+	"github.com/werf/3p-helm-legacy/pkg/storage/driver"
 )
 
 // Upgrade is the action for upgrading releases.

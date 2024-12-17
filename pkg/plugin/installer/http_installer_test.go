@@ -31,9 +31,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm/internal/test/ensure"
-	"github.com/werf/3p-helm/pkg/getter"
-	"github.com/werf/3p-helm/pkg/helmpath"
+	"github.com/werf/3p-helm-legacy/internal/test/ensure"
+	"github.com/werf/3p-helm-legacy/pkg/getter"
+	"github.com/werf/3p-helm-legacy/pkg/helmpath"
 )
 
 var _ Installer = new(HTTPInstaller)

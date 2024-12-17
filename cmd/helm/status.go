@@ -28,11 +28,11 @@ import (
 
 	"k8s.io/kubectl/pkg/cmd/get"
 
-	"github.com/werf/3p-helm/cmd/helm/require"
-	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/chartutil"
-	"github.com/werf/3p-helm/pkg/cli/output"
-	"github.com/werf/3p-helm/pkg/release"
+	"github.com/werf/3p-helm-legacy/cmd/helm/require"
+	"github.com/werf/3p-helm-legacy/pkg/action"
+	"github.com/werf/3p-helm-legacy/pkg/chartutil"
+	"github.com/werf/3p-helm-legacy/pkg/cli/output"
+	"github.com/werf/3p-helm-legacy/pkg/release"
 )
 
 // NOTE: Keep the list of statuses up-to-date with pkg/release/status.go.

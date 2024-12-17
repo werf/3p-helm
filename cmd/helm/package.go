@@ -25,10 +25,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/cli/values"
-	"github.com/werf/3p-helm/pkg/downloader"
-	"github.com/werf/3p-helm/pkg/getter"
+	"github.com/werf/3p-helm-legacy/pkg/action"
+	"github.com/werf/3p-helm-legacy/pkg/cli/values"
+	"github.com/werf/3p-helm-legacy/pkg/downloader"
+	"github.com/werf/3p-helm-legacy/pkg/getter"
 )
 
 const packageDesc = `

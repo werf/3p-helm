@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strconv"
 
-	rspb "github.com/werf/3p-helm/pkg/release"
+	rspb "github.com/werf/3p-helm-legacy/pkg/release"
 )
 
 // records holds a list of in-memory release records

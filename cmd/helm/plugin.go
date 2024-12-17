@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm/pkg/plugin"
+	"github.com/werf/3p-helm-legacy/pkg/plugin"
 )
 
 const pluginHelp = `

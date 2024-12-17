@@ -26,9 +26,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm/internal/tlsutil"
-	"github.com/werf/3p-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm/pkg/registry"
+	"github.com/werf/3p-helm-legacy/internal/tlsutil"
+	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
+	"github.com/werf/3p-helm-legacy/pkg/registry"
 )
 
 // OCIPusher is the default OCI backend handler

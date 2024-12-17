@@ -23,9 +23,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chartutil"
-	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-legacy/pkg/chartutil"
+	"github.com/werf/3p-helm-legacy/pkg/lint/support"
 )
 
 const templateTestBasedir = "./testdata/albatross"

@@ -22,9 +22,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
+	"github.com/werf/3p-helm-legacy/pkg/lint/support"
 )
 
 // Dependencies runs lints against a chart's dependencies

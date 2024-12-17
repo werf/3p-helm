@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	helmtime "github.com/werf/3p-helm/pkg/time"
+	helmtime "github.com/werf/3p-helm-legacy/pkg/time"
 
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -34,9 +34,9 @@ import (
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
 
-	"github.com/werf/3p-helm/internal/tlsutil"
-	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm-legacy/internal/tlsutil"
+	"github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
 )
 
 var immutableOciAnnotations = []string{

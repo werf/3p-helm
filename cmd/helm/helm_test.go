@@ -28,15 +28,15 @@ import (
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm/internal/test"
-	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/chartutil"
-	"github.com/werf/3p-helm/pkg/cli"
-	kubefake "github.com/werf/3p-helm/pkg/kube/fake"
-	"github.com/werf/3p-helm/pkg/release"
-	"github.com/werf/3p-helm/pkg/storage"
-	"github.com/werf/3p-helm/pkg/storage/driver"
-	"github.com/werf/3p-helm/pkg/time"
+	"github.com/werf/3p-helm-legacy/internal/test"
+	"github.com/werf/3p-helm-legacy/pkg/action"
+	"github.com/werf/3p-helm-legacy/pkg/chartutil"
+	"github.com/werf/3p-helm-legacy/pkg/cli"
+	kubefake "github.com/werf/3p-helm-legacy/pkg/kube/fake"
+	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-legacy/pkg/storage"
+	"github.com/werf/3p-helm-legacy/pkg/storage/driver"
+	"github.com/werf/3p-helm-legacy/pkg/time"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }

@@ -17,7 +17,7 @@ limitations under the License.
 package action
 
 import (
-	"github.com/werf/3p-helm/pkg/release"
+	"github.com/werf/3p-helm-legacy/pkg/release"
 )
 
 // Get is the action for checking a given release's information.

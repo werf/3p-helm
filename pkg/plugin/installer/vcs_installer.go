@@ -23,9 +23,9 @@ import (
 	"github.com/Masterminds/vcs"
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm/internal/third_party/dep/fs"
-	"github.com/werf/3p-helm/pkg/helmpath"
-	"github.com/werf/3p-helm/pkg/plugin/cache"
+	"github.com/werf/3p-helm-legacy/internal/third_party/dep/fs"
+	"github.com/werf/3p-helm-legacy/pkg/helmpath"
+	"github.com/werf/3p-helm-legacy/pkg/plugin/cache"
 )
 
 // VCSInstaller installs plugins from remote a repository.

@@ -28,7 +28,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/werf/3p-helm/cmd/helm/require"
+	"github.com/werf/3p-helm-legacy/cmd/helm/require"
 )
 
 const docsDesc = `

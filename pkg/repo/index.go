@@ -31,11 +31,11 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm/internal/fileutil"
-	"github.com/werf/3p-helm/internal/urlutil"
-	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm/pkg/provenance"
+	"github.com/werf/3p-helm-legacy/internal/fileutil"
+	"github.com/werf/3p-helm-legacy/internal/urlutil"
+	"github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
+	"github.com/werf/3p-helm-legacy/pkg/provenance"
 )
 
 var indexPath = "index.yaml"

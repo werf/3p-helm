@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/werf/3p-helm/pkg/time"
+	"github.com/werf/3p-helm-legacy/pkg/time"
 )
 
 func NewDeployReport() *DeployReport {

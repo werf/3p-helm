@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/werf/3p-helm/pkg/cli"
+	"github.com/werf/3p-helm-legacy/pkg/cli"
 )
 
 func TestCollectPlugins(t *testing.T) {

@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	rspb "github.com/werf/3p-helm/pkg/release"
+	rspb "github.com/werf/3p-helm-legacy/pkg/release"
 )
 
 var (

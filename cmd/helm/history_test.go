@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/werf/3p-helm/pkg/release"
+	"github.com/werf/3p-helm-legacy/pkg/release"
 )
 
 func TestHistoryCmd(t *testing.T) {

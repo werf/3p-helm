@@ -1,7 +1,7 @@
 package externaldeps
 
 import (
-	"github.com/werf/3p-helm/pkg/kube"
+	"github.com/werf/3p-helm-legacy/pkg/kube"
 )
 
 type ExternalDependencyList []*ExternalDependency

@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/werf/3p-helm/pkg/helmpath"
-	"github.com/werf/3p-helm/pkg/repo"
-	"github.com/werf/3p-helm/pkg/repo/repotest"
+	"github.com/werf/3p-helm-legacy/pkg/helmpath"
+	"github.com/werf/3p-helm-legacy/pkg/repo"
+	"github.com/werf/3p-helm-legacy/pkg/repo/repotest"
 )
 
 func TestRepoRemove(t *testing.T) {

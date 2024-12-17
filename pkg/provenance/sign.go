@@ -30,8 +30,8 @@ import (
 	"golang.org/x/crypto/openpgp/packet"    // nolint
 	"sigs.k8s.io/yaml"
 
-	hapi "github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chart/loader"
+	hapi "github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
 )
 
 var defaultPGPConfig = packet.Config{

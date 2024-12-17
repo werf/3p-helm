@@ -1,4 +1,4 @@
-module github.com/werf/3p-helm
+module github.com/werf/3p-helm-legacy
 
 go 1.21
 

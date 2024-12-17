@@ -25,9 +25,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm/internal/tlsutil"
-	"github.com/werf/3p-helm/internal/urlutil"
-	"github.com/werf/3p-helm/internal/version"
+	"github.com/werf/3p-helm-legacy/internal/tlsutil"
+	"github.com/werf/3p-helm-legacy/internal/urlutil"
+	"github.com/werf/3p-helm-legacy/internal/version"
 )
 
 // HTTPGetter is the default HTTP(/S) backend handler

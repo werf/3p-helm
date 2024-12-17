@@ -29,17 +29,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm/cmd/helm/require"
-	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm/pkg/cli/output"
-	"github.com/werf/3p-helm/pkg/cli/values"
-	"github.com/werf/3p-helm/pkg/downloader"
-	"github.com/werf/3p-helm/pkg/errs"
-	"github.com/werf/3p-helm/pkg/getter"
-	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/postrender"
-	"github.com/werf/3p-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm-legacy/cmd/helm/require"
+	"github.com/werf/3p-helm-legacy/pkg/action"
+	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
+	"github.com/werf/3p-helm-legacy/pkg/cli/output"
+	"github.com/werf/3p-helm-legacy/pkg/cli/values"
+	"github.com/werf/3p-helm-legacy/pkg/downloader"
+	"github.com/werf/3p-helm-legacy/pkg/errs"
+	"github.com/werf/3p-helm-legacy/pkg/getter"
+	"github.com/werf/3p-helm-legacy/pkg/phases"
+	"github.com/werf/3p-helm-legacy/pkg/postrender"
+	"github.com/werf/3p-helm-legacy/pkg/storage/driver"
 )
 
 const upgradeDesc = `

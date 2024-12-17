@@ -24,14 +24,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/werf/3p-helm/pkg/chartutil"
-	"github.com/werf/3p-helm/pkg/kube"
-	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/phases/phasemanagers"
-	"github.com/werf/3p-helm/pkg/phases/stages"
-	"github.com/werf/3p-helm/pkg/release"
-	"github.com/werf/3p-helm/pkg/releaseutil"
-	helmtime "github.com/werf/3p-helm/pkg/time"
+	"github.com/werf/3p-helm-legacy/pkg/chartutil"
+	"github.com/werf/3p-helm-legacy/pkg/kube"
+	"github.com/werf/3p-helm-legacy/pkg/phases"
+	"github.com/werf/3p-helm-legacy/pkg/phases/phasemanagers"
+	"github.com/werf/3p-helm-legacy/pkg/phases/stages"
+	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-legacy/pkg/releaseutil"
+	helmtime "github.com/werf/3p-helm-legacy/pkg/time"
 )
 
 // Rollback is the action for rolling back to a given release.

@@ -28,15 +28,15 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/werf/3p-helm/cmd/helm/require"
-	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/chartutil"
-	"github.com/werf/3p-helm/pkg/cli/values"
-	"github.com/werf/3p-helm/pkg/errs"
-	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/postrender"
-	"github.com/werf/3p-helm/pkg/release"
-	"github.com/werf/3p-helm/pkg/releaseutil"
+	"github.com/werf/3p-helm-legacy/cmd/helm/require"
+	"github.com/werf/3p-helm-legacy/pkg/action"
+	"github.com/werf/3p-helm-legacy/pkg/chartutil"
+	"github.com/werf/3p-helm-legacy/pkg/cli/values"
+	"github.com/werf/3p-helm-legacy/pkg/errs"
+	"github.com/werf/3p-helm-legacy/pkg/phases"
+	"github.com/werf/3p-helm-legacy/pkg/postrender"
+	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-legacy/pkg/releaseutil"
 )
 
 const templateDesc = `

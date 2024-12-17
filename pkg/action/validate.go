@@ -20,8 +20,8 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/werf/3p-helm/pkg/kube"
-	"github.com/werf/3p-helm/pkg/releaseutil"
+	"github.com/werf/3p-helm-legacy/pkg/kube"
+	"github.com/werf/3p-helm-legacy/pkg/releaseutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/cli-runtime/pkg/resource"
 )

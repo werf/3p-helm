@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
-	helmtime "github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
+	helmtime "github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 func outputFlagCompletionTest(t *testing.T, cmdName string) {

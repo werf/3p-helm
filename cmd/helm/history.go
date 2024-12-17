@@ -25,13 +25,13 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm-for-werf-helm/cmd/helm/require"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/cli/output"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/releaseutil"
-	helmtime "github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	"github.com/werf/3p-helm/for-werf-helm/cmd/helm/require"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/action"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/cli/output"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/releaseutil"
+	helmtime "github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 var historyHelp = `

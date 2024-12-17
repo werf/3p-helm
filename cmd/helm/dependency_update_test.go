@@ -22,13 +22,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/test/ensure"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/provenance"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo/repotest"
+	"github.com/werf/3p-helm/for-werf-helm/internal/test/ensure"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/provenance"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo/repotest"
 )
 
 func TestDependencyUpdateCmd(t *testing.T) {

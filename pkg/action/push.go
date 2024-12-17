@@ -20,10 +20,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/pusher"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/uploader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/pusher"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/uploader"
 )
 
 // Push is the action for uploading a chart.

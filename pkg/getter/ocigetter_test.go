@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/registry"
 )
 
 func TestOCIGetter(t *testing.T) {

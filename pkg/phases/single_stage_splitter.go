@@ -3,8 +3,8 @@ package phases
 import (
 	"fmt"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/kube"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/phases/stages"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/kube"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/phases/stages"
 	"k8s.io/cli-runtime/pkg/resource"
 )
 

@@ -19,8 +19,8 @@ package action
 import (
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
 )
 
 // History is the action for checking the release's ledger.

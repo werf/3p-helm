@@ -1,7 +1,7 @@
 package stages
 
 import (
-	"github.com/werf/3p-helm-for-werf-helm/pkg/kube"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/kube"
 )
 
 type SortedStageList []*Stage

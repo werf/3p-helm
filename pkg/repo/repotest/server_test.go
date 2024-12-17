@@ -23,8 +23,8 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/test/ensure"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm/for-werf-helm/internal/test/ensure"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo"
 )
 
 // Young'n, in these here parts, we test our tests.

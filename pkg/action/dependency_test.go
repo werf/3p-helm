@@ -24,9 +24,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/test"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/internal/test"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
 )
 
 func TestList(t *testing.T) {

@@ -24,12 +24,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/downloader"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/downloader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo"
 )
 
 // Pull is the action for checking a given release's information.

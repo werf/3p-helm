@@ -28,15 +28,15 @@ import (
 	shellwords "github.com/mattn/go-shellwords"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/test"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
-	kubefake "github.com/werf/3p-helm-for-werf-helm/pkg/kube/fake"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/storage"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/storage/driver"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	"github.com/werf/3p-helm/for-werf-helm/internal/test"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/action"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/cli"
+	kubefake "github.com/werf/3p-helm/for-werf-helm/pkg/kube/fake"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/storage"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 func testTimestamper() time.Time { return time.Unix(242085845, 0).UTC() }

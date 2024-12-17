@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/werf/3p-helm-for-werf-helm/cmd/helm/require"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/phases"
+	"github.com/werf/3p-helm/for-werf-helm/cmd/helm/require"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/action"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/phases"
 )
 
 const uninstallDesc = `

@@ -1,4 +1,4 @@
-module github.com/werf/3p-helm-for-werf-helm
+module github.com/werf/3p-helm/for-werf-helm
 
 go 1.21
 

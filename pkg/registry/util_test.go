@@ -23,8 +23,8 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	helmtime "github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	helmtime "github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 func TestGenerateOCIChartAnnotations(t *testing.T) {

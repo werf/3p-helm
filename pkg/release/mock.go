@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 // MockHookTemplate is the hook template used for all mock release objects.

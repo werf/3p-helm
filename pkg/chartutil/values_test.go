@@ -22,7 +22,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
 )
 
 func TestReadValues(t *testing.T) {

@@ -19,7 +19,7 @@ package support
 import (
 	"fmt"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/errs"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/errs"
 )
 
 // Severity indicates the severity of a Message.

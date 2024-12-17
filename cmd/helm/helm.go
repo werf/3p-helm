@@ -29,12 +29,12 @@ import (
 	// Import to initialize client auth plugins.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/kube"
-	kubefake "github.com/werf/3p-helm-for-werf-helm/pkg/kube/fake"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/action"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/kube"
+	kubefake "github.com/werf/3p-helm/for-werf-helm/pkg/kube/fake"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/storage/driver"
 )
 
 var settings = cli.New()

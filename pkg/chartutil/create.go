@@ -27,8 +27,8 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart/loader"
 )
 
 // chartName is a regular expression for testing the supplied name of a chart.

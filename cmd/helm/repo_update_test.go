@@ -24,10 +24,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/test/ensure"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo/repotest"
+	"github.com/werf/3p-helm/for-werf-helm/internal/test/ensure"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo/repotest"
 )
 
 func TestUpdateCmd(t *testing.T) {

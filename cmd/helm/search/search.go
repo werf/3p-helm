@@ -31,7 +31,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo"
 )
 
 // Result is a search result.

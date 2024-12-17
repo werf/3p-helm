@@ -23,15 +23,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/storage/driver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	kubefake "github.com/werf/3p-helm-for-werf-helm/pkg/kube/fake"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
-	helmtime "github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	kubefake "github.com/werf/3p-helm/for-werf-helm/pkg/kube/fake"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
+	helmtime "github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 func upgradeAction(t *testing.T) *Upgrade {

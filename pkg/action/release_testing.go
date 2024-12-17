@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
 )
 
 const (

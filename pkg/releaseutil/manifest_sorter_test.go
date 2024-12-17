@@ -22,8 +22,8 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
 )
 
 func TestSortManifests(t *testing.T) {

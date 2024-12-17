@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/kube"
-	rel "github.com/werf/3p-helm-for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/kube"
+	rel "github.com/werf/3p-helm/for-werf-helm/pkg/release"
 )
 
 func NewDeployedResourcesCalculator(history []*rel.Release, stagesSplitter Splitter, kubeClient kube.Interface) *DeployedResourcesCalculator {

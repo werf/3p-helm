@@ -30,9 +30,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/tlsutil"
-	"github.com/werf/3p-helm-for-werf-helm/internal/version"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm/for-werf-helm/internal/tlsutil"
+	"github.com/werf/3p-helm/for-werf-helm/internal/version"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/cli"
 )
 
 func TestHTTPGetter(t *testing.T) {

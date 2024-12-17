@@ -25,7 +25,7 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/deprecation"
 	kscheme "k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
 )
 
 var (

@@ -22,11 +22,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo/repotest"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo/repotest"
 )
 
 func TestVersionEquals(t *testing.T) {

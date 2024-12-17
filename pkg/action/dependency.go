@@ -26,8 +26,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/gosuri/uitable"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart/loader"
 )
 
 // Dependency is the action for building a given chart's dependency tree.

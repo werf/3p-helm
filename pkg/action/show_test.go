@@ -19,7 +19,7 @@ package action
 import (
 	"testing"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
 )
 
 func TestShow(t *testing.T) {

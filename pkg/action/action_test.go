@@ -22,14 +22,14 @@ import (
 
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	kubefake "github.com/werf/3p-helm-for-werf-helm/pkg/kube/fake"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/storage"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/storage/driver"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/time"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	kubefake "github.com/werf/3p-helm/for-werf-helm/pkg/kube/fake"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/storage"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/time"
 )
 
 var verbose = flag.Bool("test.log", false, "enable test logging")

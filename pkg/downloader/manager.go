@@ -33,16 +33,16 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-for-werf-helm/internal/resolver"
-	"github.com/werf/3p-helm-for-werf-helm/internal/third_party/dep/fs"
-	"github.com/werf/3p-helm-for-werf-helm/internal/urlutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm/for-werf-helm/internal/resolver"
+	"github.com/werf/3p-helm/for-werf-helm/internal/third_party/dep/fs"
+	"github.com/werf/3p-helm/for-werf-helm/internal/urlutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/repo"
 )
 
 // ErrRepoNotFound indicates that chart repositories can't be found in local repo cache.

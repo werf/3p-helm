@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/resource"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/kube"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/kube"
 )
 
 // FailingKubeClient implements KubeClient for testing purposes. It also has

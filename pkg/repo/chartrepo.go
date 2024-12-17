@@ -31,10 +31,10 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
-	"github.com/werf/3p-helm-for-werf-helm/pkg/provenance"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm/for-werf-helm/pkg/provenance"
 )
 
 // Entry represents a collection of parameters for chart repository

@@ -30,10 +30,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm-legacy/cmd/helm/search"
-	"github.com/werf/3p-helm-legacy/pkg/cli/output"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath"
-	"github.com/werf/3p-helm-legacy/pkg/repo"
+	"github.com/werf/3p-helm-for-werf-helm/cmd/helm/search"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/cli/output"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
 )
 
 const searchRepoDesc = `

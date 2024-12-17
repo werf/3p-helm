@@ -19,8 +19,8 @@ package pusher
 import (
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/pkg/cli"
-	"github.com/werf/3p-helm-legacy/pkg/registry"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
 )
 
 // options are generic parameters to be provided to the pusher during instantiation.

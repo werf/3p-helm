@@ -25,8 +25,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/pkg/cli"
-	"github.com/werf/3p-helm-legacy/pkg/plugin"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/plugin"
 )
 
 // collectPlugins scans for getter plugins.

@@ -24,10 +24,10 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 
-	"github.com/werf/3p-helm-legacy/cmd/helm/require"
-	"github.com/werf/3p-helm-legacy/pkg/action"
-	"github.com/werf/3p-helm-legacy/pkg/downloader"
-	"github.com/werf/3p-helm-legacy/pkg/getter"
+	"github.com/werf/3p-helm-for-werf-helm/cmd/helm/require"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/downloader"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
 )
 
 const dependencyBuildDesc = `

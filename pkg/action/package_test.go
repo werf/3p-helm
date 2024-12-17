@@ -23,7 +23,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 
-	"github.com/werf/3p-helm-legacy/internal/test/ensure"
+	"github.com/werf/3p-helm-for-werf-helm/internal/test/ensure"
 )
 
 func TestPassphraseFileFetcher(t *testing.T) {

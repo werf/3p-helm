@@ -23,10 +23,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm-legacy/cmd/helm/require"
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath"
+	"github.com/werf/3p-helm-for-werf-helm/cmd/helm/require"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
 )
 
 const createDesc = `

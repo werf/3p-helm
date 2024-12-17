@@ -22,8 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	"github.com/werf/3p-helm-legacy/pkg/lint/support"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/lint/support"
 )
 
 // Values lints a chart's values.yaml file.

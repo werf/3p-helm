@@ -25,9 +25,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/internal/sympath"
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/ignore"
+	"github.com/werf/3p-helm-for-werf-helm/internal/sympath"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/ignore"
 )
 
 var utf8bom = []byte{0xEF, 0xBB, 0xBF}

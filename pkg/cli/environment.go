@@ -34,8 +34,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
-	"github.com/werf/3p-helm-legacy/internal/version"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath"
+	"github.com/werf/3p-helm-for-werf-helm/internal/version"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
 )
 
 // defaultMaxHistory sets the maximum number of releases to 0: unlimited

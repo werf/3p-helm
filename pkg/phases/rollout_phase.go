@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/werf/3p-helm-legacy/pkg/kube"
-	"github.com/werf/3p-helm-legacy/pkg/phases/stages"
-	rel "github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/kube"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/phases/stages"
+	rel "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func NewRolloutPhase(release *rel.Release, stagesSplitter Splitter, kubeClient kube.Interface) *RolloutPhase {

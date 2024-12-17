@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm-legacy/cmd/helm/require"
-	"github.com/werf/3p-helm-legacy/pkg/repo"
+	"github.com/werf/3p-helm-for-werf-helm/cmd/helm/require"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
 )
 
 const repoIndexDesc = `

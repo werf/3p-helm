@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
 )
 
 func TestCreate(t *testing.T) {

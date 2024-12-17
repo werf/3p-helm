@@ -19,7 +19,7 @@ package helm_v3
 import (
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func TestUninstall(t *testing.T) {

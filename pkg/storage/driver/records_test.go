@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func TestRecordsAdd(t *testing.T) {

@@ -19,7 +19,7 @@ package releaseutil // import "helm.sh/helm/v3/pkg/releaseutil"
 import (
 	"testing"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func TestFilterAny(t *testing.T) {

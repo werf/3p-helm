@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
-	helmtime "github.com/werf/3p-helm-legacy/pkg/time"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
+	helmtime "github.com/werf/3p-helm-for-werf-helm/pkg/time"
 )
 
 // note: this test data is shared with filter_test.go.

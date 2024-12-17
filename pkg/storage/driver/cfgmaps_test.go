@@ -21,7 +21,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func TestConfigMapName(t *testing.T) {

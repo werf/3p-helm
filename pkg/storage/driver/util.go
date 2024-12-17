@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"io"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 var b64 = base64.StdEncoding

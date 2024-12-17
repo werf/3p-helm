@@ -22,10 +22,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	"github.com/werf/3p-helm-legacy/pkg/provenance"
-	"github.com/werf/3p-helm-legacy/pkg/repo"
-	"github.com/werf/3p-helm-legacy/pkg/repo/repotest"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/provenance"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/repo/repotest"
 )
 
 func TestDependencyBuildCmd(t *testing.T) {

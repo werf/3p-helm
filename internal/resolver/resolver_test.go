@@ -19,8 +19,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/registry"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
 )
 
 func TestResolve(t *testing.T) {

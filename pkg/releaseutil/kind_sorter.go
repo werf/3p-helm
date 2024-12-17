@@ -19,7 +19,7 @@ package releaseutil
 import (
 	"sort"
 
-	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 // KindSortOrder is an ordering of Kinds.

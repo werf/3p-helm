@@ -25,10 +25,10 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/chart/loader"
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	"github.com/werf/3p-helm-legacy/pkg/registry"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart/loader"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
 )
 
 // ShowOutputFormat is the format of the output of `helm show`

@@ -26,13 +26,13 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/internal/fileutil"
-	"github.com/werf/3p-helm-legacy/internal/urlutil"
-	"github.com/werf/3p-helm-legacy/pkg/getter"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath"
-	"github.com/werf/3p-helm-legacy/pkg/provenance"
-	"github.com/werf/3p-helm-legacy/pkg/registry"
-	"github.com/werf/3p-helm-legacy/pkg/repo"
+	"github.com/werf/3p-helm-for-werf-helm/internal/fileutil"
+	"github.com/werf/3p-helm-for-werf-helm/internal/urlutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/provenance"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
 )
 
 // VerificationStrategy describes a strategy for determining whether to verify a chart.

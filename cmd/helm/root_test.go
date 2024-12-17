@@ -21,9 +21,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/internal/test/ensure"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath/xdg"
+	"github.com/werf/3p-helm-for-werf-helm/internal/test/ensure"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath/xdg"
 )
 
 func TestRootCmd(t *testing.T) {

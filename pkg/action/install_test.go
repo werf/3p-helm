@@ -31,13 +31,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/werf/3p-helm-legacy/internal/test"
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	kubefake "github.com/werf/3p-helm-legacy/pkg/kube/fake"
-	"github.com/werf/3p-helm-legacy/pkg/release"
-	"github.com/werf/3p-helm-legacy/pkg/storage/driver"
-	helmtime "github.com/werf/3p-helm-legacy/pkg/time"
+	"github.com/werf/3p-helm-for-werf-helm/internal/test"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	kubefake "github.com/werf/3p-helm-for-werf-helm/pkg/kube/fake"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/storage/driver"
+	helmtime "github.com/werf/3p-helm-for-werf-helm/pkg/time"
 )
 
 type nameTemplateTestCase struct {

@@ -18,7 +18,7 @@ package getter
 import (
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/cli"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
 )
 
 const pluginDir = "testdata/plugins"

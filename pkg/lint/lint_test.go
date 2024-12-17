@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	"github.com/werf/3p-helm-legacy/pkg/lint/support"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/lint/support"
 )
 
 var values map[string]interface{}

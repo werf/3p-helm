@@ -29,11 +29,11 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/internal/third_party/dep/fs"
-	"github.com/werf/3p-helm-legacy/pkg/cli"
-	"github.com/werf/3p-helm-legacy/pkg/getter"
-	"github.com/werf/3p-helm-legacy/pkg/helmpath"
-	"github.com/werf/3p-helm-legacy/pkg/plugin/cache"
+	"github.com/werf/3p-helm-for-werf-helm/internal/third_party/dep/fs"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/helmpath"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/plugin/cache"
 )
 
 // HTTPInstaller installs plugins from an archive served by a web server.

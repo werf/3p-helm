@@ -15,7 +15,7 @@ limitations under the License.
 
 package release
 
-import "github.com/werf/3p-helm-legacy/pkg/chart"
+import "github.com/werf/3p-helm-for-werf-helm/pkg/chart"
 
 // Release describes a deployment of a chart, together with the chart
 // and the variables used to deploy that chart.

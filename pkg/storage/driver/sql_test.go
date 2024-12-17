@@ -23,7 +23,7 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	migrate "github.com/rubenv/sql-migrate"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func TestSQLName(t *testing.T) {

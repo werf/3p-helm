@@ -29,9 +29,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/werf/3p-helm-legacy/pkg/action"
-	"github.com/werf/3p-helm-legacy/pkg/registry"
-	"github.com/werf/3p-helm-legacy/pkg/repo"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/repo"
 )
 
 var globalUsage = `The Kubernetes package manager

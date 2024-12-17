@@ -1,7 +1,7 @@
 package phases
 
 import (
-	"github.com/werf/3p-helm-legacy/pkg/phases/stages"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/phases/stages"
 )
 
 type NoExternalDepsGenerator struct{}

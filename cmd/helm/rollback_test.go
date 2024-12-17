@@ -21,8 +21,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/chart"
-	"github.com/werf/3p-helm-legacy/pkg/release"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 func TestRollbackCmd(t *testing.T) {

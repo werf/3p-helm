@@ -22,8 +22,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/pkg/pusher"
-	"github.com/werf/3p-helm-legacy/pkg/registry"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/pusher"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/registry"
 )
 
 // ChartUploader handles uploading a chart.

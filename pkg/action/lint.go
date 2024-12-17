@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/werf/3p-helm-legacy/pkg/chartutil"
-	"github.com/werf/3p-helm-legacy/pkg/lint"
-	"github.com/werf/3p-helm-legacy/pkg/lint/support"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chartutil"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/lint"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/lint/support"
 )
 
 // Lint is the action for checking that the semantics of a chart are well-formed.

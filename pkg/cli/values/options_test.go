@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/werf/3p-helm-legacy/pkg/getter"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/getter"
 )
 
 func TestMergeValues(t *testing.T) {

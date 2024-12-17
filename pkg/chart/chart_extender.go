@@ -3,7 +3,7 @@ package chart
 import (
 	"text/template"
 
-	"github.com/werf/3p-helm-legacy/pkg/cli"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/cli"
 )
 
 type ChartExtenderBufferedFile struct {

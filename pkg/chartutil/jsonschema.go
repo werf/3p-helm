@@ -25,7 +25,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm-legacy/pkg/chart"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/chart"
 )
 
 // ValidateAgainstSchema checks that values does not violate the structure laid out in schema

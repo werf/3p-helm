@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	rspb "github.com/werf/3p-helm-legacy/pkg/release"
+	rspb "github.com/werf/3p-helm-for-werf-helm/pkg/release"
 )
 
 var _ Driver = (*Memory)(nil)

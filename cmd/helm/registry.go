@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/werf/3p-helm-legacy/pkg/action"
+	"github.com/werf/3p-helm-for-werf-helm/pkg/action"
 )
 
 const registryHelp = `

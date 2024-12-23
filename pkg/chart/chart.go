@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 )
 
 // APIVersionV1 is the API version number for version 1.
@@ -55,7 +57,8 @@ type Chart struct {
 	parent       *Chart
 	dependencies []*Chart
 
-	ChartExtender ChartExtender `json:"-"`
+	ChartExtender      ChartExtender           `json:"-"`
+	SecretsRuntimeData runtimedata.RuntimeData `json:"-"`
 }
 
 type CRD struct {

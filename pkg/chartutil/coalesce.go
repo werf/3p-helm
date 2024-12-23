@@ -17,13 +17,20 @@ limitations under the License.
 package chartutil
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
+	"github.com/werf/3p-helm/pkg/werf/file"
+	"github.com/werf/common-go/pkg/secret"
+	"github.com/werf/logboek"
 )
 
 func concatPrefix(a, b string) string {
@@ -43,12 +50,9 @@ func concatPrefix(a, b string) string {
 //   - A chart has access to all of the variables for it, as well as all of
 //     the values destined for its dependencies.
 func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
-	if chrt.ChartExtender != nil {
-		if newVals, err := chrt.ChartExtender.MakeValues(vals); err != nil {
-			return vals, err
-		} else {
-			vals = newVals
-		}
+	vals, err := makeValues(chrt, vals)
+	if err != nil {
+		return vals, err
 	}
 
 	valsCopy, err := copyValues(vals)
@@ -73,12 +77,9 @@ func CoalesceValues(chrt *chart.Chart, vals map[string]interface{}) (Values, err
 // logic need to retain them for when Coalescing will happen again later in the
 // business logic.
 func MergeValues(chrt *chart.Chart, vals map[string]interface{}) (Values, error) {
-	if chrt.ChartExtender != nil {
-		if newVals, err := chrt.ChartExtender.MakeValues(vals); err != nil {
-			return vals, err
-		} else {
-			vals = newVals
-		}
+	vals, err := makeValues(chrt, vals)
+	if err != nil {
+		return vals, err
 	}
 
 	valsCopy, err := copyValues(vals)
@@ -306,4 +307,97 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 		}
 	}
 	return dst
+}
+
+func makeValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]interface{}, error) {
+	if chrt.ChartExtender == nil {
+		return vals, nil
+	}
+
+	switch chrt.ChartExtender.Type() {
+	case "bundle", "chart", "subchart":
+		if newVals, err := MergeInternal(context.Background(), vals, chrt.ChartExtender.GetServiceValues(), chrt.SecretsRuntimeData.GetDecryptedSecretValues()); err != nil {
+			return vals, err
+		} else {
+			vals = newVals
+		}
+	case "chartstub":
+	default:
+		panic("unexpected type")
+	}
+
+	newVals, err := chrt.ChartExtender.MakeValues(vals)
+	if err != nil {
+		return nil, err
+	}
+
+	if chrt.ChartExtender.Type() == "chartstub" {
+		CoalesceTables(newVals, chrt.SecretsRuntimeData.GetDecryptedSecretValues())
+		CoalesceTables(newVals, vals)
+	}
+
+	vals = newVals
+
+	return vals, nil
+}
+
+func DebugPrintValues(ctx context.Context, name string, vals map[string]interface{}) {
+	data, err := yaml.Marshal(vals)
+	if err != nil {
+		logboek.Context(ctx).Debug().LogF("Unable to marshal %q values: %s\n", err)
+	} else {
+		logboek.Context(ctx).Debug().LogF("%q values:\n%s---\n", name, data)
+	}
+}
+
+func DebugSecretValues() bool {
+	return os.Getenv("WERF_DEBUG_SECRET_VALUES") == "1"
+}
+
+func MergeInternal(ctx context.Context, inputVals, serviceVals map[string]interface{}, decryptedSecretValues map[string]interface{}) (map[string]interface{}, error) {
+	vals := make(map[string]interface{})
+
+	DebugPrintValues(ctx, "service", serviceVals)
+	CoalesceTables(vals, serviceVals) // NOTE: service values will not be saved into the marshalled release
+
+	if decryptedSecretValues != nil {
+		if DebugSecretValues() {
+			DebugPrintValues(ctx, "secret", decryptedSecretValues)
+		}
+		CoalesceTables(vals, decryptedSecretValues)
+	}
+
+	DebugPrintValues(ctx, "input", inputVals)
+	CoalesceTables(vals, inputVals)
+
+	if DebugSecretValues() {
+		// Only print all values with secrets when secret values debug enabled
+		DebugPrintValues(ctx, "all", vals)
+	}
+
+	return vals, nil
+}
+
+func LoadChartSecretValueFiles(
+	chartDir string,
+	secretDirFiles []*file.ChartExtenderBufferedFile,
+	encoder *secret.YamlEncoder,
+) (map[string]interface{}, error) {
+	var res map[string]interface{}
+
+	for _, file := range secretDirFiles {
+		decodedData, err := encoder.DecryptYamlData(file.Data)
+		if err != nil {
+			return nil, fmt.Errorf("cannot decode file %q secret data: %w", filepath.Join(chartDir, file.Name), err)
+		}
+
+		rawValues := map[string]interface{}{}
+		if err := yaml.Unmarshal(decodedData, &rawValues); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", filepath.Join(chartDir, file.Name), err)
+		}
+
+		res = CoalesceTables(rawValues, res)
+	}
+
+	return res, nil
 }

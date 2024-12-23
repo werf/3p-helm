@@ -294,6 +294,7 @@ func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error)
 				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
 				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
 			}
+			subchartOptions.SecretsRuntimeDataFactoryFunc = options.SecretsRuntimeDataFactoryFunc
 			sc, err = LoadArchiveWithOptions(bytes.NewBuffer(file.Data), subchartOptions)
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
@@ -313,6 +314,7 @@ func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error)
 				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
 				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
 			}
+			subchartOptions.SecretsRuntimeDataFactoryFunc = options.SecretsRuntimeDataFactoryFunc
 			sc, err = LoadFiles(buff, subchartOptions)
 		}
 

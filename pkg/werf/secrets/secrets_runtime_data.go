@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/werf/file"
 	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 	"github.com/werf/common-go/pkg/secret"
@@ -16,6 +16,8 @@ import (
 )
 
 var _ runtimedata.RuntimeData = (*SecretsRuntimeData)(nil)
+
+var CoalesceTablesFunc func(dst, src map[string]interface{}) map[string]interface{}
 
 type SecretsRuntimeData struct {
 	decryptedSecretValues    map[string]interface{}
@@ -87,7 +89,7 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	}
 
 	if len(loadedSecretValuesFiles) > 0 {
-		if values, err := chartutil.LoadChartSecretValueFiles(chartDir, loadedSecretValuesFiles, encoder); err != nil {
+		if values, err := LoadChartSecretValueFiles(chartDir, loadedSecretValuesFiles, encoder); err != nil {
 			return fmt.Errorf("error loading secret value files: %w", err)
 		} else {
 			secretsRuntimeData.decryptedSecretValues = values
@@ -144,4 +146,28 @@ func (secretsRuntimeData *SecretsRuntimeData) GetDecryptedSecretFilesData() map[
 
 func (secretsRuntimeData *SecretsRuntimeData) GetSecretValuesToMask() []string {
 	return secretsRuntimeData.secretValuesToMask
+}
+
+func LoadChartSecretValueFiles(
+	chartDir string,
+	secretDirFiles []*file.ChartExtenderBufferedFile,
+	encoder *secret.YamlEncoder,
+) (map[string]interface{}, error) {
+	var res map[string]interface{}
+
+	for _, file := range secretDirFiles {
+		decodedData, err := encoder.DecryptYamlData(file.Data)
+		if err != nil {
+			return nil, fmt.Errorf("cannot decode file %q secret data: %w", filepath.Join(chartDir, file.Name), err)
+		}
+
+		rawValues := map[string]interface{}{}
+		if err := yaml.Unmarshal(decodedData, &rawValues); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", filepath.Join(chartDir, file.Name), err)
+		}
+
+		res = CoalesceTablesFunc(rawValues, res)
+	}
+
+	return res, nil
 }

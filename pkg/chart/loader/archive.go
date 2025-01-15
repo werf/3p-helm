@@ -39,7 +39,7 @@ var drivePathPattern = regexp.MustCompile(`^[a-zA-Z]:/`)
 type FileLoader string
 
 // Load loads a chart
-func (l FileLoader) Load(options LoadOptions) (*chart.Chart, error) {
+func (l FileLoader) Load(options chart.LoadOptions) (*chart.Chart, error) {
 	return LoadFileWithOptions(string(l), options)
 }
 
@@ -48,7 +48,7 @@ func LoadFile(name string) (*chart.Chart, error) {
 	return LoadFileWithOptions(name, *GlobalLoadOptions)
 }
 
-func LoadFileWithOptions(name string, options LoadOptions) (*chart.Chart, error) {
+func LoadFileWithOptions(name string, options chart.LoadOptions) (*chart.Chart, error) {
 	if fi, err := os.Stat(name); err != nil {
 		return nil, err
 	} else if fi.IsDir() {
@@ -204,7 +204,7 @@ func LoadArchive(in io.Reader) (*chart.Chart, error) {
 }
 
 // LoadArchive loads from a reader containing a compressed tar archive.
-func LoadArchiveWithOptions(in io.Reader, options LoadOptions) (*chart.Chart, error) {
+func LoadArchiveWithOptions(in io.Reader, options chart.LoadOptions) (*chart.Chart, error) {
 	files, err := LoadArchiveFiles(in)
 	if err != nil {
 		return nil, err

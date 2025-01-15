@@ -912,3 +912,7 @@ func key(name string) (string, error) {
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
+
+func (m *Manager) SetChartPath(path string) {
+	m.ChartPath = path
+}

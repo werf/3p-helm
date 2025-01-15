@@ -21,15 +21,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/werf/file"
-	"github.com/werf/common-go/pkg/secret"
 	"github.com/werf/logboek"
 )
 
@@ -376,28 +373,4 @@ func MergeInternal(ctx context.Context, inputVals, serviceVals map[string]interf
 	}
 
 	return vals, nil
-}
-
-func LoadChartSecretValueFiles(
-	chartDir string,
-	secretDirFiles []*file.ChartExtenderBufferedFile,
-	encoder *secret.YamlEncoder,
-) (map[string]interface{}, error) {
-	var res map[string]interface{}
-
-	for _, file := range secretDirFiles {
-		decodedData, err := encoder.DecryptYamlData(file.Data)
-		if err != nil {
-			return nil, fmt.Errorf("cannot decode file %q secret data: %w", filepath.Join(chartDir, file.Name), err)
-		}
-
-		rawValues := map[string]interface{}{}
-		if err := yaml.Unmarshal(decodedData, &rawValues); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", filepath.Join(chartDir, file.Name), err)
-		}
-
-		res = CoalesceTables(rawValues, res)
-	}
-
-	return res, nil
 }

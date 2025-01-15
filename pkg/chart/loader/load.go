@@ -37,7 +37,7 @@ import (
 
 // ChartLoader loads a chart.
 type ChartLoader interface {
-	Load(options LoadOptions) (*chart.Chart, error)
+	Load(options chart.LoadOptions) (*chart.Chart, error)
 }
 
 // Loader returns a new ChartLoader appropriate for the given chart name
@@ -64,7 +64,7 @@ func Load(name string) (*chart.Chart, error) {
 	return LoadWithOptions(name, *GlobalLoadOptions)
 }
 
-func LoadWithOptions(name string, opts LoadOptions) (*chart.Chart, error) {
+func LoadWithOptions(name string, opts chart.LoadOptions) (*chart.Chart, error) {
 	l, err := Loader(name)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ type BufferedFile struct {
 }
 
 // LoadFiles loads from in-memory files.
-func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error) {
+func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, error) {
 	c := new(chart.Chart)
 	subcharts := make(map[string][]*BufferedFile)
 
@@ -289,7 +289,7 @@ func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error)
 				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
 			// Untar the chart and add to c.Dependencies
-			var subchartOptions LoadOptions
+			var subchartOptions chart.LoadOptions
 			if options.SubchartExtenderFactoryFunc != nil {
 				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
 				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
@@ -309,7 +309,7 @@ func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error)
 				buff = append(buff, f)
 			}
 
-			var subchartOptions LoadOptions
+			var subchartOptions chart.LoadOptions
 			if options.SubchartExtenderFactoryFunc != nil {
 				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
 				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
@@ -333,12 +333,6 @@ func LoadFiles(files []*BufferedFile, options LoadOptions) (*chart.Chart, error)
 	return c, nil
 }
 
-type LoadOptions struct {
-	ChartExtender                 chart.ChartExtender
-	SubchartExtenderFactoryFunc   func() chart.ChartExtender
-	SecretsRuntimeDataFactoryFunc func() runtimedata.RuntimeData
-}
-
 func convertBufferedFilesForChartExtender(files []*BufferedFile) []*file.ChartExtenderBufferedFile {
 	var res []*file.ChartExtenderBufferedFile
 	for _, f := range files {
@@ -359,8 +353,8 @@ func convertChartExtenderFilesToBufferedFiles(files []*file.ChartExtenderBuffere
 	return res
 }
 
-var GlobalLoadOptions *LoadOptions
+var GlobalLoadOptions *chart.LoadOptions
 
 func init() {
-	GlobalLoadOptions = &LoadOptions{}
+	GlobalLoadOptions = &chart.LoadOptions{}
 }

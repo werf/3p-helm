@@ -5,6 +5,7 @@ import (
 
 	"github.com/werf/3p-helm/pkg/cli"
 	"github.com/werf/3p-helm/pkg/werf/file"
+	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 )
 
 type ChartExtender interface {
@@ -24,5 +25,17 @@ type ChartExtender interface {
 	GetServiceValues() map[string]interface{}
 	GetProjectDir() string
 	GetChartDir() string
+	SetChartDir(dir string)
+	GetBuildChartDependenciesOpts() BuildChartDependenciesOptions
 	Type() string
+}
+
+type BuildChartDependenciesOptions struct {
+	LoadOptions *LoadOptions
+}
+
+type LoadOptions struct {
+	ChartExtender                 ChartExtender
+	SubchartExtenderFactoryFunc   func() ChartExtender
+	SecretsRuntimeDataFactoryFunc func() runtimedata.RuntimeData
 }

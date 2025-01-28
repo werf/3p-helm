@@ -323,10 +323,7 @@ func makeValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]inte
 		panic("unexpected type")
 	}
 
-	newVals, err := chrt.ChartExtender.MakeValues(vals)
-	if err != nil {
-		return nil, err
-	}
+	newVals := vals
 
 	if chrt.ChartExtender.Type() == "chartstub" {
 		CoalesceTables(newVals, chrt.SecretsRuntimeData.GetDecryptedSecretValues())

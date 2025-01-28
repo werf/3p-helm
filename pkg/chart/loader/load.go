@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
+	"github.com/werf/3p-helm/pkg/werf/chartextender"
 	"github.com/werf/3p-helm/pkg/werf/file"
 	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 	"github.com/werf/common-go/pkg/secrets_manager"
@@ -89,9 +90,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 
 	if options.ChartExtender != nil {
 		c.ChartExtender = options.ChartExtender
-		if err := c.ChartExtender.ChartCreated(c); err != nil {
-			return c, err
-		}
+		c.ChartExtender.SetHelmChart(c)
 	}
 
 	// do not rely on assumed ordering of files in the chart and crash
@@ -176,7 +175,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 	}
 
 	if c.ChartExtender != nil {
-		switch options.ChartExtender.Type() {
+		switch c.ChartExtender.Type() {
 		case "bundle":
 			if secrets_manager.DefaultManager != nil {
 				wd, err := os.Getwd()
@@ -187,42 +186,66 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 				if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
 					context.Background(),
 					convertBufferedFilesForChartExtender(files),
-					options.ChartExtender.GetChartDir(),
+					c.ChartExtender.GetChartDir(),
 					wd,
 					secrets_manager.DefaultManager,
 					runtimedata.DecodeAndLoadSecretsOptions{
 						LoadFromLocalFilesystem:    true,
-						CustomSecretValueFiles:     options.ChartExtender.GetSecretValueFiles(),
+						CustomSecretValueFiles:     c.ChartExtender.GetSecretValueFiles(),
 						WithoutDefaultSecretValues: false,
 					},
 				); err != nil {
 					return nil, fmt.Errorf("error decoding secrets: %w", err)
 				}
 			}
+
+			if c.ChartExtender.GetDisableDefaultValues() {
+				logboek.Context(context.Background()).Info().LogF("Disable default werf chart values\n")
+				c.Values = nil
+			}
 		case "chart":
 			if secrets_manager.DefaultManager != nil {
-				if options.ChartExtender.GetDisableDefaultSecretValues() {
+				if c.ChartExtender.GetDisableDefaultSecretValues() {
 					logboek.Context(context.Background()).Info().LogF("Disable default werf chart secret values\n")
 				}
 
 				if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
 					context.Background(),
 					convertBufferedFilesForChartExtender(files),
-					options.ChartExtender.GetChartDir(),
-					options.ChartExtender.GetProjectDir(),
+					c.ChartExtender.GetChartDir(),
+					c.ChartExtender.GetProjectDir(),
 					secrets_manager.DefaultManager,
 					runtimedata.DecodeAndLoadSecretsOptions{
-						ChartFileReader:            options.ChartExtender.GetChartFileReader(),
-						CustomSecretValueFiles:     options.ChartExtender.GetSecretValueFiles(),
-						WithoutDefaultSecretValues: options.ChartExtender.GetDisableDefaultSecretValues(),
+						ChartFileReader:            c.ChartExtender.GetChartFileReader(),
+						CustomSecretValueFiles:     c.ChartExtender.GetSecretValueFiles(),
+						WithoutDefaultSecretValues: c.ChartExtender.GetDisableDefaultSecretValues(),
 					},
 				); err != nil {
 					return nil, fmt.Errorf("error decoding secrets: %w", err)
 				}
 			}
+
+			c.Metadata = chartextender.AutosetChartMetadata(
+				c.Metadata,
+				chartextender.GetHelmChartMetadataOptions{
+					DefaultAPIVersion:  chartextender.DefaultChartAPIVersion,
+					DefaultName:        chartextender.DefaultChartName,
+					DefaultVersion:     chartextender.DefaultChartVersion,
+					OverrideAppVersion: chartextender.ChartAppVersion,
+				},
+			)
+
+			c.Templates = append(c.Templates, &chart.File{
+				Name: "templates/_werf_helpers.tpl",
+			})
+
+			if c.ChartExtender.GetDisableDefaultValues() {
+				logboek.Context(context.Background()).Info().LogF("Disable default werf chart values\n")
+				c.Values = nil
+			}
 		case "subchart":
 			if secrets_manager.DefaultManager != nil {
-				if options.ChartExtender.GetDisableDefaultSecretValues() {
+				if c.ChartExtender.GetDisableDefaultSecretValues() {
 					logboek.Context(context.Background()).Info().LogF("Disabled subchart secret values\n")
 				}
 
@@ -233,7 +256,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 					"",
 					secrets_manager.DefaultManager,
 					runtimedata.DecodeAndLoadSecretsOptions{
-						WithoutDefaultSecretValues: options.ChartExtender.GetDisableDefaultSecretValues(),
+						WithoutDefaultSecretValues: c.ChartExtender.GetDisableDefaultSecretValues(),
 					},
 				); err != nil {
 					return nil, fmt.Errorf("error decoding secrets: %w", err)
@@ -249,23 +272,32 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 				if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
 					context.Background(),
 					convertBufferedFilesForChartExtender(files),
-					options.ChartExtender.GetChartDir(),
+					c.ChartExtender.GetChartDir(),
 					cwd,
 					secrets_manager.DefaultManager,
 					runtimedata.DecodeAndLoadSecretsOptions{
-						CustomSecretValueFiles:  options.ChartExtender.GetSecretValueFiles(),
+						CustomSecretValueFiles:  c.ChartExtender.GetSecretValueFiles(),
 						LoadFromLocalFilesystem: true,
 					},
 				); err != nil {
 					return nil, fmt.Errorf("error decoding secrets: %w", err)
 				}
 			}
+
+			c.Metadata = chartextender.AutosetChartMetadata(
+				c.Metadata,
+				chartextender.GetHelmChartMetadataOptions{
+					DefaultAPIVersion: chart.APIVersionV2,
+					DefaultName:       "stubchartname",
+					DefaultVersion:    "1.0.0",
+				},
+			)
+
+			c.Templates = append(c.Templates, &chart.File{
+				Name: "templates/_werf_helpers.tpl",
+			})
 		default:
 			panic("unexpected type")
-		}
-
-		if err := c.ChartExtender.ChartLoaded(convertBufferedFilesForChartExtender(files)); err != nil {
-			return c, err
 		}
 	}
 
@@ -322,12 +354,6 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			return c, errors.Wrapf(err, "error unpacking %s in %s", n, c.Name())
 		}
 		c.AddDependency(sc)
-	}
-
-	if c.ChartExtender != nil {
-		if err := c.ChartExtender.ChartDependenciesLoaded(); err != nil {
-			return c, err
-		}
 	}
 
 	return c, nil

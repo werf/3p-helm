@@ -17,6 +17,7 @@ limitations under the License.
 package values
 
 import (
+	"context"
 	"io"
 	"net/url"
 	"os"
@@ -50,15 +51,11 @@ func (opts *Options) MergeValues(p getter.Providers, extender chart.ChartExtende
 		currentMap := map[string]interface{}{}
 
 		var bytes []byte
-		if extender != nil {
-			if isRead, data, err := extender.ReadFile(filePath); err != nil {
+		var err error
+		if extender != nil && extender.Type() == "chart" {
+			bytes, err = extender.GetChartFileReader().ReadChartFile(context.Background(), filePath)
+			if err != nil {
 				return nil, err
-			} else if isRead {
-				bytes = data
-			} else if data, err := readFile(filePath, p); err != nil {
-				return nil, err
-			} else {
-				bytes = data
 			}
 		} else if data, err := readFile(filePath, p); err != nil {
 			return nil, err
@@ -97,19 +94,18 @@ func (opts *Options) MergeValues(p getter.Providers, extender chart.ChartExtende
 	// User specified a value via --set-file
 	for _, value := range opts.FileValues {
 		reader := func(rs []rune) (interface{}, error) {
-			if extender != nil {
-				if isRead, bytes, err := extender.ReadFile(string(rs)); err != nil {
-					return nil, err
-				} else if isRead {
-					return string(bytes), err
-				}
+			var bytes []byte
+			var err error
+			if extender != nil && extender.Type() == "chart" {
+				bytes, err = extender.GetChartFileReader().ReadChartFile(context.Background(), string(rs))
+			} else {
+				bytes, err = readFile(string(rs), p)
 			}
-
-			bytes, err := readFile(string(rs), p)
 			if err != nil {
 				return nil, err
 			}
-			return string(bytes), err
+
+			return string(bytes), nil
 		}
 		if err := strvals.ParseIntoFile(value, base, reader); err != nil {
 			return nil, errors.Wrap(err, "failed parsing --set-file data")

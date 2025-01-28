@@ -38,7 +38,6 @@ import (
 	"github.com/werf/3p-helm/pkg/errs"
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/postrender"
 	"github.com/werf/3p-helm/pkg/storage/driver"
 )
 
@@ -110,9 +109,6 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.ChainPostRenderer != nil {
-				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
-			}
 			if opts.ValueOpts != nil {
 				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)
 				valueOpts.StringValues = append(valueOpts.StringValues, opts.ValueOpts.StringValues...)
@@ -210,14 +206,14 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 
 			var chartPath string
 			if loader.GlobalLoadOptions.ChartExtender != nil {
-				if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(args[1], settings); err != nil {
-					return err
-				} else if isLocated {
-					chartPath = path
-				} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
-					return err
-				} else {
-					chartPath = path
+				switch loader.GlobalLoadOptions.ChartExtender.Type() {
+				case "chart":
+					chartPath, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), args[0])
+					if err != nil {
+						return err
+					}
+				default:
+					panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
 				}
 			} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
 				return err
@@ -352,13 +348,12 @@ func newUpgradeCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type UpgradeCmdOptions struct {
-	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
-	ValueOpts         *values.Options
-	CreateNamespace   *bool
-	Install           *bool
-	Wait              *bool
-	Atomic            *bool
-	Timeout           *time.Duration
+	ValueOpts       *values.Options
+	CreateNamespace *bool
+	Install         *bool
+	Wait            *bool
+	Atomic          *bool
+	Timeout         *time.Duration
 
 	StagesSplitter              phases.Splitter
 	IgnorePending               *bool

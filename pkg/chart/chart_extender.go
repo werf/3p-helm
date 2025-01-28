@@ -1,32 +1,25 @@
 package chart
 
 import (
-	"text/template"
-
-	"github.com/werf/3p-helm/pkg/cli"
 	"github.com/werf/3p-helm/pkg/werf/file"
 	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 )
 
 type ChartExtender interface {
-	ChartCreated(c *Chart) error
-	ChartLoaded(files []*file.ChartExtenderBufferedFile) error
-	ChartDependenciesLoaded() error
-	MakeValues(inputVals map[string]interface{}) (map[string]interface{}, error)
-	SetupTemplateFuncs(t *template.Template, funcMap template.FuncMap)
-
-	LoadDir(dir string) (bool, []*file.ChartExtenderBufferedFile, error)
-	LocateChart(name string, settings *cli.EnvSettings) (bool, string, error)
-	ReadFile(filePath string) (bool, []byte, error)
-
+	AddExtraAnnotations(annotations map[string]string)
+	AddExtraLabels(labels map[string]string)
+	GetBuildChartDependenciesOpts() BuildChartDependenciesOptions
+	GetChartDir() string
 	GetChartFileReader() file.ChartFileReader
 	GetDisableDefaultSecretValues() bool
+	GetDisableDefaultValues() bool
+	GetExtraAnnotations() map[string]string
+	GetExtraLabels() map[string]string
+	GetProjectDir() string
 	GetSecretValueFiles() []string
 	GetServiceValues() map[string]interface{}
-	GetProjectDir() string
-	GetChartDir() string
 	SetChartDir(dir string)
-	GetBuildChartDependenciesOpts() BuildChartDependenciesOptions
+	SetHelmChart(c *Chart)
 	Type() string
 }
 

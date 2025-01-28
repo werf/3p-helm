@@ -262,8 +262,6 @@ func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender, s
 		default:
 			panic("unknown extender type")
 		}
-
-		extender.SetupTemplateFuncs(t, funcMap)
 	}
 
 	t.Funcs(funcMap)

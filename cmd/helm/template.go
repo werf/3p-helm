@@ -28,13 +28,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/cli/values"
 	"github.com/werf/3p-helm/pkg/errs"
 	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/postrender"
 	"github.com/werf/3p-helm/pkg/release"
 	"github.com/werf/3p-helm/pkg/releaseutil"
 )
@@ -94,9 +94,6 @@ func NewTemplateCmd(cfg *action.Configuration, out io.Writer, opts TemplateCmdOp
 					return fmt.Errorf("invalid kube version '%s': %s", *opts.KubeVersion, err)
 				}
 				client.KubeVersion = parsedKubeVersion
-			}
-			if opts.ChainPostRenderer != nil {
-				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
 			}
 			if opts.ValueOpts != nil {
 				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)
@@ -299,14 +296,13 @@ func newTemplateCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type TemplateCmdOptions struct {
-	StagesSplitter    phases.Splitter
-	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
-	ValueOpts         *values.Options
-	Validate          *bool
-	IncludeCrds       *bool
-	IsUpgrade         *bool
-	ShowFiles         *[]string
-	KubeVersion       *string
+	StagesSplitter phases.Splitter
+	ValueOpts      *values.Options
+	Validate       *bool
+	IncludeCrds    *bool
+	IsUpgrade      *bool
+	ShowFiles      *[]string
+	KubeVersion    *string
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }

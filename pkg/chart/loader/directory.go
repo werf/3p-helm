@@ -53,10 +53,6 @@ func LoadDirWithOptions(dir string, options chart.LoadOptions) (*chart.Chart, er
 	ctx := context.Background()
 
 	if options.ChartExtender != nil {
-		if _, _, err := options.ChartExtender.LoadDir(dir); err != nil {
-			return nil, fmt.Errorf("unable to load files from dir %s: %s", dir, err)
-		}
-
 		switch options.ChartExtender.Type() {
 		case "chart":
 			chartFileReader := options.ChartExtender.GetChartFileReader()

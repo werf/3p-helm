@@ -17,6 +17,7 @@ limitations under the License.
 package helm_v3
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -221,14 +222,15 @@ func runShow(args []string, client *action.Show) (string, error) {
 
 	var cp string
 	if loader.GlobalLoadOptions.ChartExtender != nil {
-		if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(args[0], settings); err != nil {
-			return "", err
-		} else if isLocated {
-			cp = path
-		} else if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
-			return "", err
-		} else {
-			cp = path
+		switch loader.GlobalLoadOptions.ChartExtender.Type() {
+		case "chart":
+			var err error
+			cp, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), args[0])
+			if err != nil {
+				return "", err
+			}
+		default:
+			panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
 		}
 	} else if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
 		return "", err

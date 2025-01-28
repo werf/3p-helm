@@ -2,9 +2,14 @@ package chartextender
 
 import "github.com/werf/3p-helm/pkg/chart"
 
+var DefaultChartName string
+var ChartAppVersion string
+var DefaultChartVersion string
+var DefaultChartAPIVersion string
+
 type GetHelmChartMetadataOptions struct {
 	OverrideAppVersion string
-	OverrideName       string
+	DefaultAPIVersion  string
 	DefaultName        string
 	DefaultVersion     string
 }
@@ -12,16 +17,16 @@ type GetHelmChartMetadataOptions struct {
 func AutosetChartMetadata(metadataIn *chart.Metadata, opts GetHelmChartMetadataOptions) *chart.Metadata {
 	var metadata *chart.Metadata
 	if metadataIn == nil {
-		metadata = &chart.Metadata{
-			APIVersion: chart.APIVersionV2,
-		}
+		metadata = &chart.Metadata{}
 	} else {
 		metadata = metadataIn
 	}
 
-	if opts.OverrideName != "" {
-		metadata.Name = opts.OverrideName
-	} else if metadata.Name == "" {
+	if metadata.APIVersion == "" {
+		metadata.APIVersion = opts.DefaultAPIVersion
+	}
+
+	if metadata.Name == "" {
 		metadata.Name = opts.DefaultName
 	}
 

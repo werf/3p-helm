@@ -29,9 +29,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/werf/3p-helm/pkg/errs"
-	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/postrender"
 
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
@@ -40,7 +37,9 @@ import (
 	"github.com/werf/3p-helm/pkg/cli/output"
 	"github.com/werf/3p-helm/pkg/cli/values"
 	"github.com/werf/3p-helm/pkg/downloader"
+	"github.com/werf/3p-helm/pkg/errs"
 	"github.com/werf/3p-helm/pkg/getter"
+	"github.com/werf/3p-helm/pkg/phases"
 	"github.com/werf/3p-helm/pkg/release"
 )
 
@@ -157,9 +156,6 @@ func NewInstallCmd(cfg *action.Configuration, out io.Writer, opts InstallCmdOpti
 				client.DryRunOption = "none"
 			}
 
-			if opts.ChainPostRenderer != nil {
-				client.PostRenderer = opts.ChainPostRenderer(client.PostRenderer)
-			}
 			if opts.ValueOpts != nil {
 				valueOpts.ValueFiles = append(valueOpts.ValueFiles, opts.ValueOpts.ValueFiles...)
 				valueOpts.StringValues = append(valueOpts.StringValues, opts.ValueOpts.StringValues...)
@@ -264,14 +260,14 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 
 	var cp string
 	if loader.GlobalLoadOptions.ChartExtender != nil {
-		if isLocated, path, err := loader.GlobalLoadOptions.ChartExtender.LocateChart(chart, settings); err != nil {
-			return nil, err
-		} else if isLocated {
-			cp = path
-		} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
-			return nil, err
-		} else {
-			cp = path
+		switch loader.GlobalLoadOptions.ChartExtender.Type() {
+		case "chart":
+			cp, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), chart)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
 		}
 	} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
 		return nil, err
@@ -402,15 +398,14 @@ func newInstallCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 }
 
 type InstallCmdOptions struct {
-	StagesSplitter    phases.Splitter
-	ChainPostRenderer func(postRenderer postrender.PostRenderer) postrender.PostRenderer
-	ValueOpts         *values.Options
-	CreateNamespace   *bool
-	Wait              *bool
-	Atomic            *bool
-	Timeout           *time.Duration
-	CleanupOnFail     *bool
-	DeployReportPath  *string
+	StagesSplitter   phases.Splitter
+	ValueOpts        *values.Options
+	CreateNamespace  *bool
+	Wait             *bool
+	Atomic           *bool
+	Timeout          *time.Duration
+	CleanupOnFail    *bool
+	DeployReportPath *string
 
 	StagesExternalDepsGenerator phases.ExternalDepsGenerator
 }

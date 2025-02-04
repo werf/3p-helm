@@ -9,7 +9,6 @@ type ChartExtender interface {
 	GetBuildChartDependenciesOpts() BuildChartDependenciesOptions
 	GetChartDir() string
 	GetChartFileReader() file.ChartFileReader
-	GetDisableDefaultSecretValues() bool
 	GetDisableDefaultValues() bool
 	GetProjectDir() string
 	GetSecretValueFiles() []string
@@ -25,6 +24,5 @@ type BuildChartDependenciesOptions struct {
 
 type LoadOptions struct {
 	ChartExtender                 ChartExtender
-	SubchartExtenderFactoryFunc   func() ChartExtender
 	SecretsRuntimeDataFactoryFunc func() runtimedata.RuntimeData
 }

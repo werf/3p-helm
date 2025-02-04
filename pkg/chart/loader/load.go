@@ -205,7 +205,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			}
 		case "chart":
 			if secrets_manager.DefaultManager != nil {
-				if c.ChartExtender.GetDisableDefaultSecretValues() {
+				if WithoutDefaultSecretValues {
 					logboek.Context(context.Background()).Info().LogF("Disable default werf chart secret values\n")
 				}
 
@@ -218,7 +218,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 					runtimedata.DecodeAndLoadSecretsOptions{
 						ChartFileReader:            c.ChartExtender.GetChartFileReader(),
 						CustomSecretValueFiles:     c.ChartExtender.GetSecretValueFiles(),
-						WithoutDefaultSecretValues: c.ChartExtender.GetDisableDefaultSecretValues(),
+						WithoutDefaultSecretValues: WithoutDefaultSecretValues,
 					},
 				); err != nil {
 					return nil, fmt.Errorf("error decoding secrets: %w", err)
@@ -245,7 +245,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			}
 		case "subchart":
 			if secrets_manager.DefaultManager != nil {
-				if c.ChartExtender.GetDisableDefaultSecretValues() {
+				if WithoutDefaultSecretValues {
 					logboek.Context(context.Background()).Info().LogF("Disabled subchart secret values\n")
 				}
 
@@ -256,7 +256,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 					"",
 					secrets_manager.DefaultManager,
 					runtimedata.DecodeAndLoadSecretsOptions{
-						WithoutDefaultSecretValues: c.ChartExtender.GetDisableDefaultSecretValues(),
+						WithoutDefaultSecretValues: WithoutDefaultSecretValues,
 					},
 				); err != nil {
 					return nil, fmt.Errorf("error decoding secrets: %w", err)
@@ -322,10 +322,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			}
 			// Untar the chart and add to c.Dependencies
 			var subchartOptions chart.LoadOptions
-			if options.SubchartExtenderFactoryFunc != nil {
-				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
-				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
-			}
+			subchartOptions.ChartExtender = chartextender.NewWerfChartStub(context.Background())
 			subchartOptions.SecretsRuntimeDataFactoryFunc = options.SecretsRuntimeDataFactoryFunc
 			sc, err = LoadArchiveWithOptions(bytes.NewBuffer(file.Data), subchartOptions)
 		default:
@@ -342,10 +339,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			}
 
 			var subchartOptions chart.LoadOptions
-			if options.SubchartExtenderFactoryFunc != nil {
-				subchartOptions.ChartExtender = options.SubchartExtenderFactoryFunc()
-				subchartOptions.SubchartExtenderFactoryFunc = options.SubchartExtenderFactoryFunc
-			}
+			subchartOptions.ChartExtender = chartextender.NewWerfChartStub(context.Background())
 			subchartOptions.SecretsRuntimeDataFactoryFunc = options.SecretsRuntimeDataFactoryFunc
 			sc, err = LoadFiles(buff, subchartOptions)
 		}
@@ -384,3 +378,5 @@ var GlobalLoadOptions *chart.LoadOptions
 func init() {
 	GlobalLoadOptions = &chart.LoadOptions{}
 }
+
+var WithoutDefaultSecretValues bool

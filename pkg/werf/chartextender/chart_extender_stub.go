@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/cli"
 	"github.com/werf/3p-helm/pkg/werf/file"
 )
 
@@ -35,10 +34,6 @@ func (wc *WerfChartStub) GetDisableDefaultValues() bool {
 	panic("not implemented")
 }
 
-func (wc *WerfChartStub) GetDisableDefaultSecretValues() bool {
-	panic("not implemented")
-}
-
 func (wc *WerfChartStub) GetSecretValueFiles() []string {
 	return []string{}
 }
@@ -57,10 +52,6 @@ func (wc *WerfChartStub) GetChartDir() string {
 
 func (wc *WerfChartStub) SetChartDir(dir string) {
 	wc.ChartDir = dir
-}
-
-func (wc *WerfChartStub) GetHelmEnvSettings() *cli.EnvSettings {
-	panic("not implemented")
 }
 
 func (wc *WerfChartStub) GetBuildChartDependenciesOpts() chart.BuildChartDependenciesOptions {

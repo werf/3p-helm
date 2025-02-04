@@ -90,7 +90,6 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 
 	if options.ChartExtender != nil {
 		c.ChartExtender = options.ChartExtender
-		c.ChartExtender.SetHelmChart(c)
 	}
 
 	// do not rely on assumed ordering of files in the chart and crash
@@ -322,7 +321,9 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			}
 			// Untar the chart and add to c.Dependencies
 			var subchartOptions chart.LoadOptions
-			subchartOptions.ChartExtender = chartextender.NewWerfChartStub(context.Background())
+			subchartOptions.ChartExtender = chartextender.NewWerfSubchart(
+				chartextender.WerfSubchartOptions{},
+			)
 			subchartOptions.SecretsRuntimeDataFactoryFunc = options.SecretsRuntimeDataFactoryFunc
 			sc, err = LoadArchiveWithOptions(bytes.NewBuffer(file.Data), subchartOptions)
 		default:
@@ -339,7 +340,9 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			}
 
 			var subchartOptions chart.LoadOptions
-			subchartOptions.ChartExtender = chartextender.NewWerfChartStub(context.Background())
+			subchartOptions.ChartExtender = chartextender.NewWerfSubchart(
+				chartextender.WerfSubchartOptions{},
+			)
 			subchartOptions.SecretsRuntimeDataFactoryFunc = options.SecretsRuntimeDataFactoryFunc
 			sc, err = LoadFiles(buff, subchartOptions)
 		}

@@ -254,10 +254,8 @@ func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender, s
 	if extender != nil {
 		switch extender.Type() {
 		case "bundle":
-			loader.SetupIncludeWrapperFuncs(funcMap)
 		case "chart", "chartstub":
 			loader.SetupWerfSecretFile(secretsRuntimeData, funcMap)
-			loader.SetupIncludeWrapperFuncs(funcMap)
 		case "subchart":
 		default:
 			panic("unknown extender type")

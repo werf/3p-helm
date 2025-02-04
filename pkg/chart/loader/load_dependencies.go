@@ -234,7 +234,7 @@ func createChartDependenciesDir(destDir string, metadataBytes, metadataLockBytes
 func getPreparedChartDependenciesDir(ctx context.Context, metadataFile, metadataLockFile *file.ChartExtenderBufferedFile, buildChartDependenciesOpts chart.BuildChartDependenciesOptions) (string, error) {
 	return prepareDependenciesDir(ctx, metadataFile.Data, metadataLockFile.Data, func(tmpDepsDir string) error {
 		buildChartDependenciesOpts.LoadOptions = &chart.LoadOptions{
-			ChartExtender: chartextender.NewWerfChartStub(ctx),
+			ChartExtender: chartextender.NewWerfChartStub(),
 			SecretsRuntimeDataFactoryFunc: func() runtimedata.RuntimeData {
 				return secrets.NewSecretsRuntimeData()
 			},

@@ -14,7 +14,6 @@ type ChartExtender interface {
 	GetSecretValueFiles() []string
 	GetServiceValues() map[string]interface{}
 	SetChartDir(dir string)
-	SetHelmChart(c *Chart)
 	Type() string
 }
 

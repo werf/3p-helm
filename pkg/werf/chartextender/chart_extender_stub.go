@@ -1,25 +1,18 @@
 package chartextender
 
 import (
-	"context"
-
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/werf/file"
 )
 
 var _ chart.ChartExtender = (*WerfChartStub)(nil)
 
-func NewWerfChartStub(ctx context.Context) *WerfChartStub {
+func NewWerfChartStub() *WerfChartStub {
 	return &WerfChartStub{}
 }
 
 type WerfChartStub struct {
-	HelmChart *chart.Chart
-	ChartDir  string
-}
-
-func (wc *WerfChartStub) SetHelmChart(c *chart.Chart) {
-	wc.HelmChart = c
+	chartDir string
 }
 
 func (wc *WerfChartStub) Type() string {
@@ -47,11 +40,11 @@ func (wc *WerfChartStub) GetProjectDir() string {
 }
 
 func (wc *WerfChartStub) GetChartDir() string {
-	return wc.ChartDir
+	return wc.chartDir
 }
 
 func (wc *WerfChartStub) SetChartDir(dir string) {
-	wc.ChartDir = dir
+	wc.chartDir = dir
 }
 
 func (wc *WerfChartStub) GetBuildChartDependenciesOpts() chart.BuildChartDependenciesOptions {

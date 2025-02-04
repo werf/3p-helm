@@ -6,15 +6,11 @@ import (
 )
 
 type ChartExtender interface {
-	AddExtraAnnotations(annotations map[string]string)
-	AddExtraLabels(labels map[string]string)
 	GetBuildChartDependenciesOpts() BuildChartDependenciesOptions
 	GetChartDir() string
 	GetChartFileReader() file.ChartFileReader
 	GetDisableDefaultSecretValues() bool
 	GetDisableDefaultValues() bool
-	GetExtraAnnotations() map[string]string
-	GetExtraLabels() map[string]string
 	GetProjectDir() string
 	GetSecretValueFiles() []string
 	GetServiceValues() map[string]interface{}

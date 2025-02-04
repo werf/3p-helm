@@ -66,19 +66,3 @@ func (wc *WerfChartStub) GetHelmEnvSettings() *cli.EnvSettings {
 func (wc *WerfChartStub) GetBuildChartDependenciesOpts() chart.BuildChartDependenciesOptions {
 	panic("not implemented")
 }
-
-func (wc *WerfChartStub) AddExtraAnnotations(annotations map[string]string) {
-	panic("not implemented")
-}
-
-func (wc *WerfChartStub) AddExtraLabels(labels map[string]string) {
-	panic("not implemented")
-}
-
-func (wc *WerfChartStub) GetExtraAnnotations() map[string]string {
-	panic("not implemented")
-}
-
-func (wc *WerfChartStub) GetExtraLabels() map[string]string {
-	panic("not implemented")
-}

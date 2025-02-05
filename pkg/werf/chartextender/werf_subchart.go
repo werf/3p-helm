@@ -31,10 +31,6 @@ func (wc *WerfSubchart) GetSecretValueFiles() []string {
 	panic("not implemented")
 }
 
-func (wc *WerfSubchart) GetServiceValues() map[string]interface{} {
-	return nil
-}
-
 func (wc *WerfSubchart) GetProjectDir() string {
 	panic("not implemented")
 }

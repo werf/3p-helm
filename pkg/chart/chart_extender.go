@@ -12,7 +12,6 @@ type ChartExtender interface {
 	GetDisableDefaultValues() bool
 	GetProjectDir() string
 	GetSecretValueFiles() []string
-	GetServiceValues() map[string]interface{}
 	SetChartDir(dir string)
 	Type() string
 }

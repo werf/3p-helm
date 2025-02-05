@@ -313,7 +313,7 @@ func makeValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]inte
 
 	switch chrt.ChartExtender.Type() {
 	case "bundle", "chart", "subchart":
-		if newVals, err := MergeInternal(context.Background(), vals, chrt.ChartExtender.GetServiceValues(), chrt.SecretsRuntimeData.GetDecryptedSecretValues()); err != nil {
+		if newVals, err := MergeInternal(context.Background(), vals, ServiceValues, chrt.SecretsRuntimeData.GetDecryptedSecretValues()); err != nil {
 			return vals, err
 		} else {
 			vals = newVals
@@ -371,3 +371,5 @@ func MergeInternal(ctx context.Context, inputVals, serviceVals map[string]interf
 
 	return vals, nil
 }
+
+var ServiceValues map[string]interface{}

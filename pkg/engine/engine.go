@@ -77,7 +77,7 @@ func New(config *rest.Config) Engine {
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap, chrt.ChartExtender, chrt.SecretsRuntimeData)
+	return e.render(tmap, chrt.SecretsRuntimeData)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
@@ -197,7 +197,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender, secretsRuntimeData runtimedata.RuntimeData) {
+func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.RuntimeData) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -251,22 +251,20 @@ func (e Engine) initFunMap(t *template.Template, extender chart.ChartExtender, s
 		}
 	}
 
-	if extender != nil {
-		switch extender.Type() {
-		case "bundle":
-		case "chart", "chartstub":
-			loader.SetupWerfSecretFile(secretsRuntimeData, funcMap)
-		case "subchart":
-		default:
-			panic("unknown extender type")
-		}
+	switch chart.CurrentChartType {
+	case chart.ChartTypeBundle:
+	case chart.ChartTypeChart, chart.ChartTypeChartStub:
+		loader.SetupWerfSecretFile(secretsRuntimeData, funcMap)
+	case chart.ChartTypeSubchart:
+	default:
+		panic("unknown extender type")
 	}
 
 	t.Funcs(funcMap)
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender, secretsRuntimeData runtimedata.RuntimeData) (rendered map[string]string, err error) {
+func (e Engine) render(tpls map[string]renderable, secretsRuntimeData runtimedata.RuntimeData) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -288,7 +286,7 @@ func (e Engine) render(tpls map[string]renderable, extender chart.ChartExtender,
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t, extender, secretsRuntimeData)
+	e.initFunMap(t, secretsRuntimeData)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.

@@ -205,17 +205,17 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			}
 
 			var chartPath string
-			if loader.GlobalLoadOptions.ChartExtender != nil {
-				switch loader.GlobalLoadOptions.ChartExtender.Type() {
-				case "chart":
-					chartPath, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), args[0])
-					if err != nil {
-						return err
-					}
-				default:
-					panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
-				}
-			} else if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
+			// if loader.GlobalLoadOptions.ChartExtender != nil {
+			// switch loader.GlobalLoadOptions.ChartExtender.Type() {
+			// case "chart":
+			// chartPath, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), args[0])
+			// if err != nil {
+			// 	return err
+			// }
+			// default:
+			// 	panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
+			// }
+			if path, err := client.ChartPathOptions.LocateChart(args[1], settings); err != nil {
 				return err
 			} else {
 				chartPath = path
@@ -227,7 +227,7 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			}
 
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p, loader.GlobalLoadOptions.ChartExtender)
+			vals, err := valueOpts.MergeValues(p)
 			if err != nil {
 				return err
 			}

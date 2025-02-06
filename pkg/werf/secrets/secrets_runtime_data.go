@@ -18,6 +18,8 @@ import (
 var _ runtimedata.RuntimeData = (*SecretsRuntimeData)(nil)
 
 var CoalesceTablesFunc func(dst, src map[string]interface{}) map[string]interface{}
+var SecretsWorkingDir string
+var ChartDir string
 
 type SecretsRuntimeData struct {
 	decryptedSecretValues    map[string]interface{}
@@ -34,10 +36,15 @@ func NewSecretsRuntimeData() *SecretsRuntimeData {
 func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	ctx context.Context,
 	loadedChartFiles []*file.ChartExtenderBufferedFile,
-	chartDir, secretsWorkingDir string,
+	noSecretsWorkingDir bool,
 	secretsManager *secrets_manager.SecretsManager,
 	opts runtimedata.DecodeAndLoadSecretsOptions,
 ) error {
+	var secretsWorkingDir string
+	if !noSecretsWorkingDir && SecretsWorkingDir != "" {
+		secretsWorkingDir = SecretsWorkingDir
+	}
+
 	secretDirFiles := GetSecretDirFiles(loadedChartFiles)
 
 	var loadedSecretValuesFiles []*file.ChartExtenderBufferedFile
@@ -78,7 +85,7 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	}
 
 	if len(secretDirFiles) > 0 {
-		if data, err := LoadChartSecretDirFilesData(chartDir, secretDirFiles, encoder); err != nil {
+		if data, err := LoadChartSecretDirFilesData(secretDirFiles, encoder); err != nil {
 			return fmt.Errorf("error loading secret files data: %w", err)
 		} else {
 			secretsRuntimeData.decryptedSecretFilesData = data
@@ -89,7 +96,7 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	}
 
 	if len(loadedSecretValuesFiles) > 0 {
-		if values, err := LoadChartSecretValueFiles(chartDir, loadedSecretValuesFiles, encoder); err != nil {
+		if values, err := LoadChartSecretValueFiles(loadedSecretValuesFiles, encoder); err != nil {
 			return fmt.Errorf("error loading secret value files: %w", err)
 		} else {
 			secretsRuntimeData.decryptedSecretValues = values
@@ -103,10 +110,15 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 func (secretsRuntimeData *SecretsRuntimeData) GetEncodedSecretValues(
 	ctx context.Context,
 	secretsManager *secrets_manager.SecretsManager,
-	secretsWorkingDir string,
+	noSecretsWorkingDir bool,
 ) (map[string]interface{}, error) {
 	if len(secretsRuntimeData.decryptedSecretValues) == 0 {
 		return nil, nil
+	}
+
+	var secretsWorkingDir string
+	if !noSecretsWorkingDir && SecretsWorkingDir != "" {
+		secretsWorkingDir = SecretsWorkingDir
 	}
 
 	// FIXME: secrets encoder should receive interface{} raw data instead of []byte yaml data
@@ -149,7 +161,6 @@ func (secretsRuntimeData *SecretsRuntimeData) GetSecretValuesToMask() []string {
 }
 
 func LoadChartSecretValueFiles(
-	chartDir string,
 	secretDirFiles []*file.ChartExtenderBufferedFile,
 	encoder *secret.YamlEncoder,
 ) (map[string]interface{}, error) {
@@ -158,12 +169,12 @@ func LoadChartSecretValueFiles(
 	for _, file := range secretDirFiles {
 		decodedData, err := encoder.DecryptYamlData(file.Data)
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode file %q secret data: %w", filepath.Join(chartDir, file.Name), err)
+			return nil, fmt.Errorf("cannot decode file %q secret data: %w", filepath.Join(ChartDir, file.Name), err)
 		}
 
 		rawValues := map[string]interface{}{}
 		if err := yaml.Unmarshal(decodedData, &rawValues); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", filepath.Join(chartDir, file.Name), err)
+			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", filepath.Join(ChartDir, file.Name), err)
 		}
 
 		res = CoalesceTablesFunc(rawValues, res)

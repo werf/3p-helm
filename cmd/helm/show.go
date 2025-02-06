@@ -17,7 +17,6 @@ limitations under the License.
 package helm_v3
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -26,7 +25,6 @@ import (
 
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
-	"github.com/werf/3p-helm/pkg/chart/loader"
 )
 
 const showDesc = `
@@ -221,18 +219,18 @@ func runShow(args []string, client *action.Show) (string, error) {
 	}
 
 	var cp string
-	if loader.GlobalLoadOptions.ChartExtender != nil {
-		switch loader.GlobalLoadOptions.ChartExtender.Type() {
-		case "chart":
-			var err error
-			cp, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), args[0])
-			if err != nil {
-				return "", err
-			}
-		default:
-			panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
-		}
-	} else if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
+	// if loader.GlobalLoadOptions.ChartExtender != nil {
+	// 	switch loader.GlobalLoadOptions.ChartExtender.Type() {
+	// 	case "chart":
+	// var err error
+	// cp, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), args[0])
+	// if err != nil {
+	// 	return "", err
+	// }
+	// default:
+	// 	panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
+	// }
+	if path, err := client.ChartPathOptions.LocateChart(args[0], settings); err != nil {
 		return "", err
 	} else {
 		cp = path

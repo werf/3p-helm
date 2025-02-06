@@ -259,17 +259,17 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	client.ReleaseName = name
 
 	var cp string
-	if loader.GlobalLoadOptions.ChartExtender != nil {
-		switch loader.GlobalLoadOptions.ChartExtender.Type() {
-		case "chart":
-			cp, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), chart)
-			if err != nil {
-				return nil, err
-			}
-		default:
-			panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
-		}
-	} else if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
+	// if loader.GlobalLoadOptions.ChartExtender != nil {
+	// 	switch loader.GlobalLoadOptions.ChartExtender.Type() {
+	// 	case "chart":
+	// cp, err = loader.GlobalLoadOptions.ChartExtender.GetChartFileReader().LocateChart(context.Background(), chart)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// default:
+	// 	panic(fmt.Sprintf("unexpected chart extender type %q", loader.GlobalLoadOptions.ChartExtender.Type()))
+	// }
+	if path, err := client.ChartPathOptions.LocateChart(chart, settings); err != nil {
 		return nil, err
 	} else {
 		cp = path
@@ -278,7 +278,7 @@ func runInstall(args []string, client *action.Install, valueOpts *values.Options
 	debug("CHART PATH: %s\n", cp)
 
 	p := getter.All(settings)
-	vals, err := valueOpts.MergeValues(p, loader.GlobalLoadOptions.ChartExtender)
+	vals, err := valueOpts.MergeValues(p)
 	if err != nil {
 		return nil, err
 	}

@@ -18,10 +18,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/werf/chartextender"
 	"github.com/werf/3p-helm/pkg/werf/file"
-	"github.com/werf/3p-helm/pkg/werf/secrets"
-	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 	chart2 "github.com/werf/common-go/pkg/lock"
 	"github.com/werf/common-go/pkg/util"
 	"github.com/werf/lockgate"
@@ -29,17 +26,24 @@ import (
 	"github.com/werf/logboek/pkg/types"
 )
 
-// FIXME(ilya-lesikov): init this in Nelm/helm too
 var LocalCacheDir string
 var DepsBuildFunc func() error
 var SetChartPathFunc func(string)
+
+func init() {
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(fmt.Sprintf("get user home dir failed: %s", err))
+	}
+
+	LocalCacheDir = filepath.Join(userHomeDir, ".werf", "local_cache")
+}
 
 func LoadChartDependencies(
 	ctx context.Context,
 	loadChartDirFunc func(ctx context.Context, dir string) ([]*file.ChartExtenderBufferedFile, error),
 	chartDir string,
 	loadedChartFiles []*file.ChartExtenderBufferedFile,
-	buildChartDependenciesOpts chart.BuildChartDependenciesOptions,
 ) ([]*file.ChartExtenderBufferedFile, error) {
 	res := loadedChartFiles
 
@@ -133,7 +137,7 @@ func LoadChartDependencies(
 		return res, nil
 	}
 
-	depsDir, err := getPreparedChartDependenciesDir(ctx, metadataFile, metadataLockFile, buildChartDependenciesOpts)
+	depsDir, err := getPreparedChartDependenciesDir(ctx, metadataFile, metadataLockFile)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing chart dependencies: %w", err)
 	}
@@ -231,15 +235,9 @@ func createChartDependenciesDir(destDir string, metadataBytes, metadataLockBytes
 	return nil
 }
 
-func getPreparedChartDependenciesDir(ctx context.Context, metadataFile, metadataLockFile *file.ChartExtenderBufferedFile, buildChartDependenciesOpts chart.BuildChartDependenciesOptions) (string, error) {
+func getPreparedChartDependenciesDir(ctx context.Context, metadataFile, metadataLockFile *file.ChartExtenderBufferedFile) (string, error) {
 	return prepareDependenciesDir(ctx, metadataFile.Data, metadataLockFile.Data, func(tmpDepsDir string) error {
-		buildChartDependenciesOpts.LoadOptions = &chart.LoadOptions{
-			ChartExtender: chartextender.NewWerfChartStub(),
-			SecretsRuntimeDataFactoryFunc: func() runtimedata.RuntimeData {
-				return secrets.NewSecretsRuntimeData()
-			},
-		}
-		if err := buildChartDependenciesInDir(ctx, tmpDepsDir, buildChartDependenciesOpts); err != nil {
+		if err := buildChartDependenciesInDir(ctx, tmpDepsDir); err != nil {
 			return fmt.Errorf("error building chart dependencies: %w", err)
 		}
 		return nil
@@ -377,13 +375,13 @@ func makeDependencyArchiveName(depName, depVersion string) string {
 	return fmt.Sprintf("%s-%s.tgz", depName, depVersion)
 }
 
-func buildChartDependenciesInDir(ctx context.Context, targetDir string, opts chart.BuildChartDependenciesOptions) error {
+func buildChartDependenciesInDir(ctx context.Context, targetDir string) error {
 	logboek.Context(ctx).Debug().LogF("-- BuildChartDependenciesInDir\n")
 
-	currentLoaderOptions := GlobalLoadOptions
-	GlobalLoadOptions = opts.LoadOptions
+	originalChartType := chart.CurrentChartType
+	chart.CurrentChartType = chart.ChartTypeChartStub
 	defer func() {
-		GlobalLoadOptions = currentLoaderOptions
+		chart.CurrentChartType = originalChartType
 	}()
 
 	SetChartPathFunc(targetDir)

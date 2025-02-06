@@ -30,6 +30,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/ignore"
 	"github.com/werf/3p-helm/pkg/werf/file"
+	"github.com/werf/3p-helm/pkg/werf/secrets"
 )
 
 var utf8bom = []byte{0xEF, 0xBB, 0xBF}
@@ -52,59 +53,53 @@ func LoadDir(dir string) (*chart.Chart, error) {
 func LoadDirWithOptions(dir string, options chart.LoadOptions) (*chart.Chart, error) {
 	ctx := context.Background()
 
-	if options.ChartExtender != nil {
-		switch options.ChartExtender.Type() {
-		case "chart":
-			chartFileReader := options.ChartExtender.GetChartFileReader()
-
-			chartFiles, err := chartFileReader.LoadChartDir(ctx, dir)
-			if err != nil {
-				return nil, fmt.Errorf("load chart dir: %w", err)
-			}
-
-			chartTreeFiles, err := LoadChartDependencies(
-				ctx,
-				chartFileReader.LoadChartDir,
-				dir,
-				chartFiles,
-				options.ChartExtender.GetBuildChartDependenciesOpts(),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("load chart dependencies: %w", err)
-			}
-
-			return LoadFiles(convertChartExtenderFilesToBufferedFiles(chartTreeFiles), options)
-		case "subchart":
-		case "chartstub":
-			options.ChartExtender.SetChartDir(dir)
-		case "bundle":
-			chartFiles, err := GetFilesFromLocalFilesystem(dir)
-			if err != nil {
-				return nil, fmt.Errorf("load files from filesystem: %w", err)
-			}
-
-			chartTreeFiles, err := LoadChartDependencies(
-				ctx,
-				func(ctx context.Context, dir string) ([]*file.ChartExtenderBufferedFile, error) {
-					files, err := GetFilesFromLocalFilesystem(dir)
-					if err != nil {
-						return nil, fmt.Errorf("load files from filesystem: %w", err)
-					}
-
-					return convertBufferedFilesForChartExtender(files), nil
-				},
-				dir,
-				convertBufferedFilesForChartExtender(chartFiles),
-				options.ChartExtender.GetBuildChartDependenciesOpts(),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("load chart dependencies: %w", err)
-			}
-
-			return LoadFiles(convertChartExtenderFilesToBufferedFiles(chartTreeFiles), options)
-		default:
-			panic("unexpected type")
+	switch chart.CurrentChartType {
+	case chart.ChartTypeChart:
+		chartFiles, err := ChartFileReader.LoadChartDir(ctx, dir)
+		if err != nil {
+			return nil, fmt.Errorf("load chart dir: %w", err)
 		}
+
+		chartTreeFiles, err := LoadChartDependencies(
+			ctx,
+			ChartFileReader.LoadChartDir,
+			dir,
+			chartFiles,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("load chart dependencies: %w", err)
+		}
+
+		return LoadFiles(convertChartExtenderFilesToBufferedFiles(chartTreeFiles), options)
+	case chart.ChartTypeSubchart:
+	case chart.ChartTypeChartStub:
+		secrets.ChartDir = dir
+	case chart.ChartTypeBundle:
+		chartFiles, err := GetFilesFromLocalFilesystem(dir)
+		if err != nil {
+			return nil, fmt.Errorf("load files from filesystem: %w", err)
+		}
+
+		chartTreeFiles, err := LoadChartDependencies(
+			ctx,
+			func(ctx context.Context, dir string) ([]*file.ChartExtenderBufferedFile, error) {
+				files, err := GetFilesFromLocalFilesystem(dir)
+				if err != nil {
+					return nil, fmt.Errorf("load files from filesystem: %w", err)
+				}
+
+				return convertBufferedFilesForChartExtender(files), nil
+			},
+			dir,
+			convertBufferedFilesForChartExtender(chartFiles),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("load chart dependencies: %w", err)
+		}
+
+		return LoadFiles(convertChartExtenderFilesToBufferedFiles(chartTreeFiles), options)
+	default:
+		panic("unexpected type")
 	}
 
 	if files, err := GetFilesFromLocalFilesystem(dir); err != nil {

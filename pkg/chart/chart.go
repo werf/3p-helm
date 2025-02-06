@@ -57,7 +57,6 @@ type Chart struct {
 	parent       *Chart
 	dependencies []*Chart
 
-	ChartExtender      ChartExtender           `json:"-"`
 	SecretsRuntimeData runtimedata.RuntimeData `json:"-"`
 }
 

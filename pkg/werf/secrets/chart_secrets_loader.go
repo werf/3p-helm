@@ -40,7 +40,6 @@ func GetSecretDirFiles(loadedChartFiles []*file.ChartExtenderBufferedFile) []*fi
 }
 
 func LoadChartSecretDirFilesData(
-	chartDir string,
 	secretFiles []*file.ChartExtenderBufferedFile,
 	encoder *secret.YamlEncoder,
 ) (map[string]string, error) {
@@ -53,7 +52,7 @@ func LoadChartSecretDirFilesData(
 
 		decodedData, err := encoder.Decrypt([]byte(strings.TrimRightFunc(string(file.Data), unicode.IsSpace)))
 		if err != nil {
-			return nil, fmt.Errorf("error decoding %s: %w", filepath.Join(chartDir, file.Name), err)
+			return nil, fmt.Errorf("error decoding %s: %w", filepath.Join(ChartDir, file.Name), err)
 		}
 
 		relPath := util.GetRelativeToBaseFilepath(SecretDirName, file.Name)

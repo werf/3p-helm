@@ -1,26 +1,14 @@
 package chart
 
-import (
-	"github.com/werf/3p-helm/pkg/werf/file"
-	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
+type ChartType string
+
+const (
+	ChartTypeChart     ChartType = "chart"
+	ChartTypeBundle    ChartType = "bundle"
+	ChartTypeSubchart  ChartType = "subchart"
+	ChartTypeChartStub ChartType = "chartstub"
 )
 
-type ChartExtender interface {
-	GetBuildChartDependenciesOpts() BuildChartDependenciesOptions
-	GetChartDir() string
-	GetChartFileReader() file.ChartFileReader
-	GetDisableDefaultValues() bool
-	GetProjectDir() string
-	GetSecretValueFiles() []string
-	SetChartDir(dir string)
-	Type() string
-}
+var CurrentChartType ChartType = ChartTypeChart
 
-type BuildChartDependenciesOptions struct {
-	LoadOptions *LoadOptions
-}
-
-type LoadOptions struct {
-	ChartExtender                 ChartExtender
-	SecretsRuntimeDataFactoryFunc func() runtimedata.RuntimeData
-}
+type LoadOptions struct{}

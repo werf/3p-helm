@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
+	"github.com/werf/3p-helm/pkg/chart/loader"
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/strvals"
 )
@@ -43,7 +44,7 @@ type Options struct {
 
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
-func (opts *Options) MergeValues(p getter.Providers, extender chart.ChartExtender) (map[string]interface{}, error) {
+func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -52,8 +53,8 @@ func (opts *Options) MergeValues(p getter.Providers, extender chart.ChartExtende
 
 		var bytes []byte
 		var err error
-		if extender != nil && extender.Type() == "chart" {
-			bytes, err = extender.GetChartFileReader().ReadChartFile(context.Background(), filePath)
+		if chart.CurrentChartType == chart.ChartTypeChart {
+			bytes, err = loader.ChartFileReader.ReadChartFile(context.Background(), filePath)
 			if err != nil {
 				return nil, err
 			}
@@ -96,8 +97,8 @@ func (opts *Options) MergeValues(p getter.Providers, extender chart.ChartExtende
 		reader := func(rs []rune) (interface{}, error) {
 			var bytes []byte
 			var err error
-			if extender != nil && extender.Type() == "chart" {
-				bytes, err = extender.GetChartFileReader().ReadChartFile(context.Background(), string(rs))
+			if chart.CurrentChartType == chart.ChartTypeChart {
+				bytes, err = loader.ChartFileReader.ReadChartFile(context.Background(), string(rs))
 			} else {
 				bytes, err = readFile(string(rs), p)
 			}

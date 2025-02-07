@@ -26,17 +26,25 @@ import (
 	"github.com/werf/logboek/pkg/types"
 )
 
-var LocalCacheDir string
+var localCacheDir string
 var DepsBuildFunc func() error
 var SetChartPathFunc func(string)
 
-func init() {
-	userHomeDir, err := os.UserHomeDir()
-	if err != nil {
-		panic(fmt.Sprintf("get user home dir failed: %s", err))
+func LocalCacheDir() (string, error) {
+	if localCacheDir == "" {
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("get user home dir: %w", err)
+		}
+
+		localCacheDir = filepath.Join(userHomeDir, ".werf", "local_cache")
 	}
 
-	LocalCacheDir = filepath.Join(userHomeDir, ".werf", "local_cache")
+	return localCacheDir, nil
+}
+
+func SetLocalCacheDir(dir string) {
+	localCacheDir = dir
 }
 
 func LoadChartDependencies(
@@ -158,14 +166,24 @@ func LoadChartDependencies(
 	return res, nil
 }
 
-func getChartDependenciesCacheDir() string {
-	return filepath.Join(LocalCacheDir, "helm_chart_dependencies", "1")
+func getChartDependenciesCacheDir() (string, error) {
+	localCacheDir, err := LocalCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("get local cache dir: %w", err)
+	}
+
+	return filepath.Join(localCacheDir, "helm_chart_dependencies", "1"), nil
 }
 
 func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockBytes []byte, prepareFunc func(tmpDepsDir string) error, logger types.ManagerInterface) (string, error) {
-	depsDir := filepath.Join(getChartDependenciesCacheDir(), util.Sha256Hash(string(metadataLockBytes)))
+	chartDependenciesCacheDir, err := getChartDependenciesCacheDir()
+	if err != nil {
+		return "", fmt.Errorf("get chart dependencies cache dir: %w", err)
+	}
 
-	_, err := os.Stat(depsDir)
+	depsDir := filepath.Join(chartDependenciesCacheDir, util.Sha256Hash(string(metadataLockBytes)))
+
+	_, err = os.Stat(depsDir)
 	switch {
 	case os.IsNotExist(err):
 		if err := logger.LogProcess("Preparing chart dependencies").DoError(func() error {

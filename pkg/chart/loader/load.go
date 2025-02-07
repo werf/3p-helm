@@ -170,20 +170,18 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 
 	switch chart.CurrentChartType {
 	case chart.ChartTypeBundle:
-		if secrets_manager.DefaultManager != nil {
-			if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
-				context.Background(),
-				convertBufferedFilesForChartExtender(files),
-				false,
-				secrets_manager.DefaultManager,
-				runtimedata.DecodeAndLoadSecretsOptions{
-					LoadFromLocalFilesystem:    true,
-					CustomSecretValueFiles:     SecretValuesFiles,
-					WithoutDefaultSecretValues: false,
-				},
-			); err != nil {
-				return nil, fmt.Errorf("error decoding secrets: %w", err)
-			}
+		if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
+			context.Background(),
+			convertBufferedFilesForChartExtender(files),
+			false,
+			secrets_manager.DefaultManager,
+			runtimedata.DecodeAndLoadSecretsOptions{
+				LoadFromLocalFilesystem:    true,
+				CustomSecretValueFiles:     SecretValuesFiles,
+				WithoutDefaultSecretValues: false,
+			},
+		); err != nil {
+			return nil, fmt.Errorf("error decoding secrets: %w", err)
 		}
 
 		if WithoutDefaultValues {
@@ -191,24 +189,22 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			c.Values = nil
 		}
 	case chart.ChartTypeChart:
-		if secrets_manager.DefaultManager != nil {
-			if WithoutDefaultSecretValues {
-				logboek.Context(context.Background()).Info().LogF("Disable default werf chart secret values\n")
-			}
+		if WithoutDefaultSecretValues {
+			logboek.Context(context.Background()).Info().LogF("Disable default werf chart secret values\n")
+		}
 
-			if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
-				context.Background(),
-				convertBufferedFilesForChartExtender(files),
-				false,
-				secrets_manager.DefaultManager,
-				runtimedata.DecodeAndLoadSecretsOptions{
-					ChartFileReader:            ChartFileReader,
-					CustomSecretValueFiles:     SecretValuesFiles,
-					WithoutDefaultSecretValues: WithoutDefaultSecretValues,
-				},
-			); err != nil {
-				return nil, fmt.Errorf("error decoding secrets: %w", err)
-			}
+		if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
+			context.Background(),
+			convertBufferedFilesForChartExtender(files),
+			false,
+			secrets_manager.DefaultManager,
+			runtimedata.DecodeAndLoadSecretsOptions{
+				ChartFileReader:            ChartFileReader,
+				CustomSecretValueFiles:     SecretValuesFiles,
+				WithoutDefaultSecretValues: WithoutDefaultSecretValues,
+			},
+		); err != nil {
+			return nil, fmt.Errorf("error decoding secrets: %w", err)
 		}
 
 		c.Metadata = chartextender.AutosetChartMetadata(
@@ -230,37 +226,33 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			c.Values = nil
 		}
 	case chart.ChartTypeSubchart:
-		if secrets_manager.DefaultManager != nil {
-			if WithoutDefaultSecretValues {
-				logboek.Context(context.Background()).Info().LogF("Disabled subchart secret values\n")
-			}
+		if WithoutDefaultSecretValues {
+			logboek.Context(context.Background()).Info().LogF("Disabled subchart secret values\n")
+		}
 
-			if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
-				context.Background(),
-				convertBufferedFilesForChartExtender(files),
-				true,
-				secrets_manager.DefaultManager,
-				runtimedata.DecodeAndLoadSecretsOptions{
-					WithoutDefaultSecretValues: WithoutDefaultSecretValues,
-				},
-			); err != nil {
-				return nil, fmt.Errorf("error decoding secrets: %w", err)
-			}
+		if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
+			context.Background(),
+			convertBufferedFilesForChartExtender(files),
+			true,
+			secrets_manager.DefaultManager,
+			runtimedata.DecodeAndLoadSecretsOptions{
+				WithoutDefaultSecretValues: WithoutDefaultSecretValues,
+			},
+		); err != nil {
+			return nil, fmt.Errorf("error decoding secrets: %w", err)
 		}
 	case chart.ChartTypeChartStub:
-		if secrets_manager.DefaultManager != nil {
-			if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
-				context.Background(),
-				convertBufferedFilesForChartExtender(files),
-				false,
-				secrets_manager.DefaultManager,
-				runtimedata.DecodeAndLoadSecretsOptions{
-					CustomSecretValueFiles:  SecretValuesFiles,
-					LoadFromLocalFilesystem: true,
-				},
-			); err != nil {
-				return nil, fmt.Errorf("error decoding secrets: %w", err)
-			}
+		if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
+			context.Background(),
+			convertBufferedFilesForChartExtender(files),
+			false,
+			secrets_manager.DefaultManager,
+			runtimedata.DecodeAndLoadSecretsOptions{
+				CustomSecretValueFiles:  SecretValuesFiles,
+				LoadFromLocalFilesystem: true,
+			},
+		); err != nil {
+			return nil, fmt.Errorf("error decoding secrets: %w", err)
 		}
 
 		c.Metadata = chartextender.AutosetChartMetadata(
@@ -298,10 +290,14 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			if file.Name != n {
 				return c, errors.Errorf("error unpacking tar in %s: expected %s, got %s", c.Name(), n, file.Name)
 			}
+
 			// Untar the chart and add to c.Dependencies
-			var subchartOptions chart.LoadOptions
+			originalChartType := chart.CurrentChartType
 			chart.CurrentChartType = chart.ChartTypeSubchart
-			sc, err = LoadArchiveWithOptions(bytes.NewBuffer(file.Data), subchartOptions)
+			defer func() {
+				chart.CurrentChartType = originalChartType
+			}()
+			sc, err = LoadArchiveWithOptions(bytes.NewBuffer(file.Data), chart.LoadOptions{})
 		default:
 			// We have to trim the prefix off of every file, and ignore any file
 			// that is in charts/, but isn't actually a chart.
@@ -315,9 +311,12 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 				buff = append(buff, f)
 			}
 
-			var subchartOptions chart.LoadOptions
+			originalChartType := chart.CurrentChartType
 			chart.CurrentChartType = chart.ChartTypeSubchart
-			sc, err = LoadFiles(buff, subchartOptions)
+			defer func() {
+				chart.CurrentChartType = originalChartType
+			}()
+			sc, err = LoadFiles(buff, chart.LoadOptions{})
 		}
 
 		if err != nil {

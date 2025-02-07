@@ -53,6 +53,7 @@ func LoadDir(dir string) (*chart.Chart, error) {
 func LoadDirWithOptions(dir string, options chart.LoadOptions) (*chart.Chart, error) {
 	ctx := context.Background()
 
+	var files []*BufferedFile
 	switch chart.CurrentChartType {
 	case chart.ChartTypeChart:
 		chartFiles, err := ChartFileReader.LoadChartDir(ctx, dir)
@@ -70,10 +71,21 @@ func LoadDirWithOptions(dir string, options chart.LoadOptions) (*chart.Chart, er
 			return nil, fmt.Errorf("load chart dependencies: %w", err)
 		}
 
-		return LoadFiles(convertChartExtenderFilesToBufferedFiles(chartTreeFiles), options)
+		files = convertChartExtenderFilesToBufferedFiles(chartTreeFiles)
 	case chart.ChartTypeSubchart:
+		var err error
+		files, err = GetFilesFromLocalFilesystem(dir)
+		if err != nil {
+			return &chart.Chart{}, err
+		}
 	case chart.ChartTypeChartStub:
 		secrets.ChartDir = dir
+
+		var err error
+		files, err = GetFilesFromLocalFilesystem(dir)
+		if err != nil {
+			return &chart.Chart{}, err
+		}
 	case chart.ChartTypeBundle:
 		chartFiles, err := GetFilesFromLocalFilesystem(dir)
 		if err != nil {
@@ -97,16 +109,12 @@ func LoadDirWithOptions(dir string, options chart.LoadOptions) (*chart.Chart, er
 			return nil, fmt.Errorf("load chart dependencies: %w", err)
 		}
 
-		return LoadFiles(convertChartExtenderFilesToBufferedFiles(chartTreeFiles), options)
+		files = convertChartExtenderFilesToBufferedFiles(chartTreeFiles)
 	default:
 		panic("unexpected type")
 	}
 
-	if files, err := GetFilesFromLocalFilesystem(dir); err != nil {
-		return &chart.Chart{}, err
-	} else {
-		return LoadFiles(files, options)
-	}
+	return LoadFiles(files, options)
 }
 
 func GetFilesFromLocalFilesystem(dir string) ([]*BufferedFile, error) {

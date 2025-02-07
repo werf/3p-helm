@@ -307,28 +307,17 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 }
 
 func makeValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]interface{}, error) {
-	switch chart.CurrentChartType {
-	case chart.ChartTypeBundle, chart.ChartTypeChart, chart.ChartTypeSubchart:
-		if newVals, err := MergeInternal(context.Background(), vals, ServiceValues, chrt.SecretsRuntimeData.GetDecryptedSecretValues()); err != nil {
-			return vals, err
-		} else {
-			vals = newVals
-		}
-	case chart.ChartTypeChartStub:
-	default:
-		panic("unexpected type")
+	result, err := MergeInternal(
+		context.Background(),
+		vals,
+		ServiceValues,
+		chrt.SecretsRuntimeData.GetDecryptedSecretValues(),
+	)
+	if err != nil {
+		return vals, err
 	}
 
-	newVals := vals
-
-	if chart.CurrentChartType == chart.ChartTypeChartStub {
-		CoalesceTables(newVals, chrt.SecretsRuntimeData.GetDecryptedSecretValues())
-		CoalesceTables(newVals, vals)
-	}
-
-	vals = newVals
-
-	return vals, nil
+	return result, nil
 }
 
 func DebugPrintValues(ctx context.Context, name string, vals map[string]interface{}) {

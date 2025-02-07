@@ -376,8 +376,8 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/werf/common-go v0.0.0-20250115100423-863829c6587b h1:ft7Yse9RtV2SJTVbCAOHFUOvIdWi+6VpjnwqEwvPNKU=
-github.com/werf/common-go v0.0.0-20250115100423-863829c6587b/go.mod h1:7pkHNfgZ2wvdwcMWCuDjdkY7iR3mIX5snYwbd1Iu7T4=
+github.com/werf/common-go v0.0.0-20250207085031-eaf3a76456fd h1:LeohTjGzFZfT4/hwkSolZwXL/qS0rTzYxzrLuX521aY=
+github.com/werf/common-go v0.0.0-20250207085031-eaf3a76456fd/go.mod h1:7pkHNfgZ2wvdwcMWCuDjdkY7iR3mIX5snYwbd1Iu7T4=
 github.com/werf/lockgate v0.1.1 h1:S400JFYjtWfE4i4LY9FA8zx0fMdfui9DPrBiTciCrx4=
 github.com/werf/lockgate v0.1.1/go.mod h1:0yIFSLq9ausy6ejNxF5uUBf/Ib6daMAfXuCaTMZJzIE=
 github.com/werf/logboek v0.6.1 h1:oEe6FkmlKg0z0n80oZjLplj6sXcBeLleCkjfOOZEL2g=

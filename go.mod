@@ -33,7 +33,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
-	github.com/werf/common-go v0.0.0-20250207093249-cd1b85356290
+	github.com/werf/common-go v0.0.0-20250208082739-007d0979ac4b
 	github.com/werf/lockgate v0.1.1
 	github.com/werf/logboek v0.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0

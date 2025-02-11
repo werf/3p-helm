@@ -252,8 +252,7 @@ func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.
 	}
 
 	switch chart.CurrentChartType {
-	case chart.ChartTypeBundle:
-	case chart.ChartTypeChart, chart.ChartTypeChartStub:
+	case chart.ChartTypeBundle, chart.ChartTypeChart, chart.ChartTypeChartStub:
 		loader.SetupWerfSecretFile(secretsRuntimeData, funcMap)
 	case chart.ChartTypeSubchart:
 	default:

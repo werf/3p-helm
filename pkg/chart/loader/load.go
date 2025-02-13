@@ -199,6 +199,7 @@ func LoadFiles(files []*BufferedFile, options chart.LoadOptions) (*chart.Chart, 
 			false,
 			secrets_manager.Manager,
 			runtimedata.DecodeAndLoadSecretsOptions{
+				LoadFromLocalFilesystem:    ChartFileReader == nil,
 				ChartFileReader:            ChartFileReader,
 				CustomSecretValueFiles:     SecretValuesFiles,
 				WithoutDefaultSecretValues: WithoutDefaultSecretValues,

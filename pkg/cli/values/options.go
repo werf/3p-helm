@@ -53,7 +53,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 		var bytes []byte
 		var err error
-		if chart.CurrentChartType == chart.ChartTypeChart {
+		if chart.CurrentChartType == chart.ChartTypeChart && loader.ChartFileReader != nil {
 			bytes, err = loader.ChartFileReader.ReadChartFile(context.Background(), filePath)
 			if err != nil {
 				return nil, err
@@ -97,7 +97,7 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		reader := func(rs []rune) (interface{}, error) {
 			var bytes []byte
 			var err error
-			if chart.CurrentChartType == chart.ChartTypeChart {
+			if chart.CurrentChartType == chart.ChartTypeChart && loader.ChartFileReader != nil {
 				bytes, err = loader.ChartFileReader.ReadChartFile(context.Background(), string(rs))
 			} else {
 				bytes, err = readFile(string(rs), p)

@@ -56,19 +56,47 @@ func LoadDirWithOptions(dir string, options chart.LoadOptions) (*chart.Chart, er
 	var files []*BufferedFile
 	switch chart.CurrentChartType {
 	case chart.ChartTypeChart:
-		chartFiles, err := ChartFileReader.LoadChartDir(ctx, dir)
-		if err != nil {
-			return nil, fmt.Errorf("load chart dir: %w", err)
-		}
+		var chartTreeFiles []*file.ChartExtenderBufferedFile
+		if ChartFileReader != nil {
+			chartFiles, err := ChartFileReader.LoadChartDir(ctx, dir)
+			if err != nil {
+				return nil, fmt.Errorf("load chart dir: %w", err)
+			}
 
-		chartTreeFiles, err := LoadChartDependencies(
-			ctx,
-			ChartFileReader.LoadChartDir,
-			dir,
-			chartFiles,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("load chart dependencies: %w", err)
+			chartTreeFiles, err = LoadChartDependencies(
+				ctx,
+				ChartFileReader.LoadChartDir,
+				dir,
+				chartFiles,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("load chart dependencies: %w", err)
+			}
+		} else {
+			var chartFiles []*file.ChartExtenderBufferedFile
+			if files, err := GetFilesFromLocalFilesystem(dir); err != nil {
+				return nil, fmt.Errorf("load files from filesystem: %w", err)
+			} else {
+				chartFiles = convertBufferedFilesForChartExtender(files)
+			}
+
+			var err error
+			chartTreeFiles, err = LoadChartDependencies(
+				ctx,
+				func(ctx context.Context, dir string) ([]*file.ChartExtenderBufferedFile, error) {
+					files, err := GetFilesFromLocalFilesystem(dir)
+					if err != nil {
+						return nil, fmt.Errorf("load files from filesystem: %w", err)
+					}
+
+					return convertBufferedFilesForChartExtender(files), nil
+				},
+				dir,
+				chartFiles,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("load chart dependencies: %w", err)
+			}
 		}
 
 		files = convertChartExtenderFilesToBufferedFiles(chartTreeFiles)

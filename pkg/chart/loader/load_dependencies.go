@@ -30,6 +30,8 @@ var localCacheDir string
 var DepsBuildFunc func() error
 var SetChartPathFunc func(string)
 
+var NoChartLockWarning = `Cannot automatically download chart dependencies without Chart.lock or requirements.lock.`
+
 func LocalCacheDir() (string, error) {
 	if localCacheDir == "" {
 		userHomeDir, err := os.UserHomeDir()
@@ -102,12 +104,8 @@ func LoadChartDependencies(
 	}
 
 	if chartMetadataLock == nil {
-		if len(chartMetadata.Dependencies) > 0 {
-			logboek.Context(ctx).Error().LogLn("Cannot build chart dependencies and preload charts without lock file (.helm/Chart.lock or .helm/requirements.lock)")
-			logboek.Context(ctx).Error().LogLn("It is recommended to add Chart.lock file to your project repository or remove chart dependencies.")
-			logboek.Context(ctx).Error().LogLn()
-			logboek.Context(ctx).Error().LogLn("To generate a lock file run 'werf helm dependency update .helm' and commit resulting .helm/Chart.lock or .helm/requirements.lock (it is not required to commit whole .helm/charts directory, better add it to the .gitignore).")
-			logboek.Context(ctx).Error().LogLn()
+		if len(chartMetadata.Dependencies) > 0 && NoChartLockWarning != "" {
+			logboek.Context(ctx).Warn().LogLn(NoChartLockWarning)
 		}
 
 		return res, nil

@@ -128,3 +128,26 @@ func loadReleasesInMemory(actionConfig *action.Configuration) {
 	// Must reset namespace to the proper one
 	mem.SetNamespace(settings.Namespace())
 }
+
+func Init() (*cobra.Command, error) {
+	kube.ManagedFieldsManager = "helm"
+
+	actionConfig := new(action.Configuration)
+	cmd, err := newRootCmd(actionConfig, os.Stdout, os.Args[1:])
+	if err != nil {
+		return nil, err
+	}
+
+	cobra.OnInitialize(func() {
+		helmDriver := os.Getenv("HELM_DRIVER")
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
+			log.Fatal(err)
+		}
+
+		if helmDriver == "memory" {
+			loadReleasesInMemory(actionConfig)
+		}
+	})
+
+	return cmd, nil
+}

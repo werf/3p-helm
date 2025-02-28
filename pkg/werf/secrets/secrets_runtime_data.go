@@ -20,6 +20,7 @@ var _ runtimedata.RuntimeData = (*SecretsRuntimeData)(nil)
 var CoalesceTablesFunc func(dst, src map[string]interface{}) map[string]interface{}
 var SecretsWorkingDir string
 var ChartDir string
+var DisableSecrets bool
 
 type SecretsRuntimeData struct {
 	decryptedSecretValues    map[string]interface{}
@@ -40,6 +41,10 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	secretsManager *secrets_manager.SecretsManager,
 	opts runtimedata.DecodeAndLoadSecretsOptions,
 ) error {
+	if DisableSecrets {
+		return nil
+	}
+
 	var secretsWorkingDir string
 	if !noSecretsWorkingDir && SecretsWorkingDir != "" {
 		secretsWorkingDir = SecretsWorkingDir

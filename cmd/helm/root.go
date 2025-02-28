@@ -151,7 +151,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	// This call is required to gather configuration information prior to
 	// execution.
 	flags.ParseErrorsWhitelist.UnknownFlags = true
-	flags.Parse(args)
+	// flags.Parse(args)
 
 	registryClient, err := newDefaultRegistryClient(false)
 	if err != nil {
@@ -199,7 +199,7 @@ func newRootCmd(actionConfig *action.Configuration, out io.Writer, args []string
 	)
 
 	// Find and add plugins
-	loadPlugins(cmd, out)
+	// loadPlugins(cmd, out)
 
 	// Check permissions on critical files
 	checkPerms()

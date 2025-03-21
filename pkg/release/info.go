@@ -38,6 +38,7 @@ type Info struct {
 	// Contains the deployed resources information
 	Resources map[string][]runtime.Object `json:"resources,omitempty"`
 
-	LastPhase *Phase `json:"last_phase,omitempty"`
-	LastStage *int   `json:"last_stage,omitempty"`
+	LastPhase   *Phase            `json:"last_phase,omitempty"`
+	LastStage   *int              `json:"last_stage,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 }

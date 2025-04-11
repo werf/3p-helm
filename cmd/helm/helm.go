@@ -138,16 +138,33 @@ func Init() (*cobra.Command, error) {
 		return nil, err
 	}
 
-	cobra.OnInitialize(func() {
+	setCmdPreRun(cmd, actionConfig)
+
+	return cmd, nil
+}
+
+func setCmdPreRun(cmd *cobra.Command, actionConfig *action.Configuration) {
+	originalPersistentPreRunE := cmd.PreRunE
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if originalPersistentPreRunE != nil {
+			if err := originalPersistentPreRunE(cmd, args); err != nil {
+				return err
+			}
+		}
+
 		helmDriver := os.Getenv("HELM_DRIVER")
 		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), helmDriver, debug); err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		if helmDriver == "memory" {
 			loadReleasesInMemory(actionConfig)
 		}
-	})
 
-	return cmd, nil
+		return nil
+	}
+
+	for _, cmd := range cmd.Commands() {
+		setCmdPreRun(cmd, actionConfig)
+	}
 }

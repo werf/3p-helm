@@ -19,7 +19,7 @@ import (
 
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/werf/file"
-	chart2 "github.com/werf/common-go/pkg/lock"
+	"github.com/werf/common-go/pkg/locker"
 	"github.com/werf/common-go/pkg/util"
 	"github.com/werf/lockgate"
 	"github.com/werf/logboek"
@@ -27,6 +27,7 @@ import (
 )
 
 var localCacheDir string
+var serviceDir string
 var DepsBuildFunc func() error
 var SetChartPathFunc func(string)
 
@@ -47,6 +48,23 @@ func LocalCacheDir() (string, error) {
 
 func SetLocalCacheDir(dir string) {
 	localCacheDir = dir
+}
+
+func ServiceDir() (string, error) {
+	if serviceDir == "" {
+		userHomeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("get user home dir: %w", err)
+		}
+
+		serviceDir = filepath.Join(userHomeDir, ".werf", "service")
+	}
+
+	return serviceDir, nil
+}
+
+func SetServiceDir(dir string) {
+	serviceDir = dir
 }
 
 func LoadChartDependencies(
@@ -173,10 +191,29 @@ func getChartDependenciesCacheDir() (string, error) {
 	return filepath.Join(localCacheDir, "helm_chart_dependencies", "1"), nil
 }
 
+func getChartDependenciesLocksDir() (string, error) {
+	svcDir, err := ServiceDir()
+	if err != nil {
+		return "", fmt.Errorf("get service dir: %w", err)
+	}
+
+	return filepath.Join(svcDir, "locks"), nil
+}
+
 func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockBytes []byte, prepareFunc func(tmpDepsDir string) error, logger types.ManagerInterface) (string, error) {
 	chartDependenciesCacheDir, err := getChartDependenciesCacheDir()
 	if err != nil {
 		return "", fmt.Errorf("get chart dependencies cache dir: %w", err)
+	}
+
+	chartDependenciesLocksDir, err := getChartDependenciesLocksDir()
+	if err != nil {
+		return "", fmt.Errorf("get chart dependencies locks dir: %w", err)
+	}
+
+	hostLocker, err := locker.NewHostLocker(chartDependenciesLocksDir)
+	if err != nil {
+		return "", fmt.Errorf("unable to create host locker: %w", err)
 	}
 
 	depsDir := filepath.Join(chartDependenciesCacheDir, util.Sha256Hash(string(metadataLockBytes)))
@@ -186,11 +223,11 @@ func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockByte
 	case os.IsNotExist(err):
 		if err := logger.LogProcess("Preparing chart dependencies").DoError(func() error {
 			logger.LogF("Using chart dependencies directory: %s\n", depsDir)
-			_, lock, err := chart2.AcquireHostLock(ctx, depsDir, lockgate.AcquireOptions{})
+			_, lock, err := hostLocker.AcquireLock(ctx, depsDir, lockgate.AcquireOptions{})
 			if err != nil {
 				return fmt.Errorf("error acquiring lock for %q: %w", depsDir, err)
 			}
-			defer chart2.ReleaseHostLock(lock)
+			defer hostLocker.ReleaseLock(lock)
 
 			switch _, err := os.Stat(depsDir); {
 			case os.IsNotExist(err):

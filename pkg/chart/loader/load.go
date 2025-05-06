@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -44,11 +43,11 @@ type ChartLoader interface {
 
 // Loader returns a new ChartLoader appropriate for the given chart name
 func Loader(name string) (ChartLoader, error) {
-	fi, err := os.Stat(name)
+	isDir, err := ChartFileReader.ChartIsDir(name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "error checking if %s is a directory", name)
 	}
-	if fi.IsDir() {
+	if isDir {
 		return DirLoader(name), nil
 	}
 	return FileLoader(name), nil

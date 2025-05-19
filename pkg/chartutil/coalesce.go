@@ -307,11 +307,16 @@ func coalesceTablesFullKey(printf printFn, dst, src map[string]interface{}, pref
 }
 
 func makeValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]interface{}, error) {
+	var decryptedSecretValues map[string]interface{}
+	if chrt.SecretsRuntimeData != nil {
+		decryptedSecretValues = chrt.SecretsRuntimeData.GetDecryptedSecretValues()
+	}
+
 	result, err := MergeInternal(
 		context.Background(),
 		vals,
 		ServiceValues,
-		chrt.SecretsRuntimeData.GetDecryptedSecretValues(),
+		decryptedSecretValues,
 	)
 	if err != nil {
 		return vals, err

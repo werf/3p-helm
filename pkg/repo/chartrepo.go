@@ -35,6 +35,7 @@ import (
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/helmpath"
 	"github.com/werf/3p-helm/pkg/provenance"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // Entry represents a collection of parameters for chart repository
@@ -157,8 +158,8 @@ func (r *ChartRepository) DownloadIndexFile() (string, error) {
 }
 
 // Index generates an index for the chart repository and writes an index.yaml file.
-func (r *ChartRepository) Index() error {
-	err := r.generateIndex()
+func (r *ChartRepository) Index(opts helmopts.HelmOptions) error {
+	err := r.generateIndex(opts)
 	if err != nil {
 		return err
 	}
@@ -173,9 +174,9 @@ func (r *ChartRepository) saveIndexFile() error {
 	return os.WriteFile(filepath.Join(r.Config.Name, indexPath), index, 0644)
 }
 
-func (r *ChartRepository) generateIndex() error {
+func (r *ChartRepository) generateIndex(opts helmopts.HelmOptions) error {
 	for _, path := range r.ChartPaths {
-		ch, err := loader.Load(path)
+		ch, err := loader.Load(path, opts)
 		if err != nil {
 			return err
 		}

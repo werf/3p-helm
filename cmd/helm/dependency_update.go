@@ -25,6 +25,7 @@ import (
 	"github.com/werf/3p-helm/pkg/action"
 	"github.com/werf/3p-helm/pkg/downloader"
 	"github.com/werf/3p-helm/pkg/getter"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const dependencyUpDesc = `
@@ -71,7 +72,16 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 			if client.Verify {
 				man.Verify = downloader.VerifyAlways
 			}
-			return man.Update()
+
+			opts := helmopts.HelmOptions{
+				ChartLoadOpts: helmopts.ChartLoadOptions{
+					ChartDir:      chartpath,
+					DepDownloader: man,
+					NoSecrets:     true,
+				},
+			}
+
+			return man.Update(opts)
 		},
 	}
 

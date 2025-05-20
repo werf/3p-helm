@@ -29,6 +29,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chart/loader"
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/registry"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // ShowOutputFormat is the format of the output of `helm show`
@@ -89,9 +90,9 @@ func (s *Show) SetRegistryClient(client *registry.Client) {
 }
 
 // Run executes 'helm show' against the given release.
-func (s *Show) Run(chartpath string) (string, error) {
+func (s *Show) Run(chartpath string, opts helmopts.HelmOptions) (string, error) {
 	if s.chart == nil {
-		chrt, err := loader.Load(chartpath)
+		chrt, err := loader.Load(chartpath, opts)
 		if err != nil {
 			return "", err
 		}

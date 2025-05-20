@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
+	"github.com/werf/3p-helm/pkg/werf/secrets"
 	"github.com/werf/logboek"
 )
 
@@ -312,10 +313,15 @@ func makeValues(chrt *chart.Chart, vals map[string]interface{}) (map[string]inte
 		decryptedSecretValues = chrt.SecretsRuntimeData.GetDecryptedSecretValues()
 	}
 
+	var extraValues map[string]interface{}
+	if chrt.ExtraValues != nil {
+		extraValues = chrt.ExtraValues
+	}
+
 	result, err := MergeInternal(
 		context.Background(),
 		vals,
-		ServiceValues,
+		extraValues,
 		decryptedSecretValues,
 	)
 	if err != nil {
@@ -362,4 +368,6 @@ func MergeInternal(ctx context.Context, inputVals, serviceVals map[string]interf
 	return vals, nil
 }
 
-var ServiceValues map[string]interface{}
+func init() {
+	secrets.CoalesceTablesFunc = CoalesceTables
+}

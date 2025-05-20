@@ -25,13 +25,14 @@ import (
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/chart/loader"
 	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // Dependencies runs lints against a chart's dependencies
 //
 // See https://github.com/helm/helm/issues/7910
-func Dependencies(linter *support.Linter) {
-	c, err := loader.LoadDir(linter.ChartDir)
+func Dependencies(linter *support.Linter, opts helmopts.HelmOptions) {
+	c, err := loader.LoadDir(linter.ChartDir, opts)
 	if !linter.RunLinterRule(support.ErrorSev, "", validateChartFormat(err)) {
 		return
 	}

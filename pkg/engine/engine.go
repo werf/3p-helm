@@ -31,6 +31,7 @@ import (
 
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/chartutil"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 	"github.com/werf/3p-helm/pkg/werf/secrets/gotmplfunctions"
 	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
 )
@@ -75,35 +76,35 @@ func New(config *rest.Config) Engine {
 // that section of the values will be passed into the "foo" chart. And if that
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
-func (e Engine) Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
+func (e Engine) Render(chrt *chart.Chart, values chartutil.Values, opts helmopts.HelmOptions) (map[string]string, error) {
 	tmap := allTemplates(chrt, values)
-	return e.render(tmap, chrt.SecretsRuntimeData)
+	return e.render(tmap, chrt.SecretsRuntimeData, opts)
 }
 
 // Render takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options.
-func Render(chrt *chart.Chart, values chartutil.Values) (map[string]string, error) {
-	return new(Engine).Render(chrt, values)
+func Render(chrt *chart.Chart, values chartutil.Values, opts helmopts.HelmOptions) (map[string]string, error) {
+	return new(Engine).Render(chrt, values, opts)
 }
 
 // RenderWithClient takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
-func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config) (map[string]string, error) {
+func RenderWithClient(chrt *chart.Chart, values chartutil.Values, config *rest.Config, opts helmopts.HelmOptions) (map[string]string, error) {
 	var clientProvider ClientProvider = clientProviderFromConfig{config}
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.Render(chrt, values, opts)
 }
 
 // RenderWithClientProvider takes a chart, optional values, and value overrides, and attempts to
 // render the Go templates using the default options. This engine is client aware and so can have template
 // functions that interact with the client.
 // This function differs from RenderWithClient in that it lets you customize the way a dynamic client is constructed.
-func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider) (map[string]string, error) {
+func RenderWithClientProvider(chrt *chart.Chart, values chartutil.Values, clientProvider ClientProvider, opts helmopts.HelmOptions) (map[string]string, error) {
 	return Engine{
 		clientProvider: &clientProvider,
-	}.Render(chrt, values)
+	}.Render(chrt, values, opts)
 }
 
 // renderable is an object that can be rendered.
@@ -197,7 +198,7 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 }
 
 // initFunMap creates the Engine's FuncMap and adds context-specific functions.
-func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.RuntimeData) {
+func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.RuntimeData, opts helmopts.HelmOptions) {
 	funcMap := funcMap()
 	includedNames := make(map[string]int)
 
@@ -251,10 +252,10 @@ func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.
 		}
 	}
 
-	switch chart.CurrentChartType {
-	case chart.ChartTypeBundle, chart.ChartTypeChart, chart.ChartTypeChartStub:
-		loader.SetupWerfSecretFile(secretsRuntimeData, funcMap)
-	case chart.ChartTypeSubchart:
+	switch opts.ChartLoadOpts.ChartType {
+	case helmopts.ChartTypeBundle, helmopts.ChartTypeChart, helmopts.ChartTypeChartStub:
+		gotmplfunctions.SetupWerfSecretFile(secretsRuntimeData, funcMap)
+	case helmopts.ChartTypeSubchart:
 	default:
 		panic("unknown extender type")
 	}
@@ -263,7 +264,7 @@ func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.
 }
 
 // render takes a map of templates/values and renders them.
-func (e Engine) render(tpls map[string]renderable, secretsRuntimeData runtimedata.RuntimeData) (rendered map[string]string, err error) {
+func (e Engine) render(tpls map[string]renderable, secretsRuntimeData runtimedata.RuntimeData, opts helmopts.HelmOptions) (rendered map[string]string, err error) {
 	// Basically, what we do here is start with an empty parent template and then
 	// build up a list of templates -- one for each file. Once all of the templates
 	// have been parsed, we loop through again and execute every template.
@@ -285,7 +286,7 @@ func (e Engine) render(tpls map[string]renderable, secretsRuntimeData runtimedat
 		t.Option("missingkey=zero")
 	}
 
-	e.initFunMap(t, secretsRuntimeData)
+	e.initFunMap(t, secretsRuntimeData, opts)
 
 	// We want to parse the templates in a predictable order. The order favors
 	// higher-level (in file system) templates over deeply nested templates.

@@ -26,6 +26,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/lint"
 	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // Lint is the action for checking that the semantics of a chart are well-formed.
@@ -127,5 +128,5 @@ func lintChart(path string, vals map[string]interface{}, namespace string, kubeV
 		}
 	}
 
-	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion), nil
+	return lint.AllWithKubeVersion(chartPath, vals, namespace, kubeVersion, helmopts.HelmOptions{}), nil
 }

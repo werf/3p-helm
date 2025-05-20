@@ -31,6 +31,7 @@ import (
 	"github.com/werf/3p-helm/pkg/cli/values"
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 var longLintHelp = `
@@ -81,7 +82,7 @@ func newLintCmd(out io.Writer) *cobra.Command {
 			}
 
 			client.Namespace = settings.Namespace()
-			vals, err := valueOpts.MergeValues(getter.All(settings))
+			vals, err := valueOpts.MergeValues(getter.All(settings), helmopts.HelmOptions{})
 			if err != nil {
 				return err
 			}

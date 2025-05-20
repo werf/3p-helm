@@ -27,6 +27,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/helmpath"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const createDesc = `
@@ -104,7 +105,7 @@ func (o *createOptions) run(out io.Writer) error {
 		if filepath.IsAbs(o.starter) {
 			lstarter = o.starter
 		}
-		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter)
+		return chartutil.CreateFrom(cfile, filepath.Dir(o.name), lstarter, helmopts.HelmOptions{})
 	}
 
 	chartutil.Stderr = out

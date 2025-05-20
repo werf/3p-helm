@@ -39,6 +39,7 @@ import (
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/phases"
 	"github.com/werf/3p-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const upgradeDesc = `
@@ -227,13 +228,13 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 			}
 
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p)
+			vals, err := valueOpts.MergeValues(p, helmopts.HelmOptions{})
 			if err != nil {
 				return err
 			}
 
 			// Check chart dependencies to make sure all are present in /charts
-			ch, err := loader.Load(chartPath)
+			ch, err := loader.Load(chartPath, helmopts.HelmOptions{})
 			if err != nil {
 				return err
 			}
@@ -251,11 +252,11 @@ func NewUpgradeCmd(cfg *action.Configuration, out io.Writer, opts UpgradeCmdOpti
 							RepositoryCache:  settings.RepositoryCache,
 							Debug:            settings.Debug,
 						}
-						if err := man.Update(); err != nil {
+						if err := man.Update(helmopts.HelmOptions{}); err != nil {
 							return err
 						}
 						// Reload the chart with the updated Chart.lock file.
-						if ch, err = loader.Load(chartPath); err != nil {
+						if ch, err = loader.Load(chartPath, helmopts.HelmOptions{}); err != nil {
 							return errors.Wrap(err, "failed reloading chart after repo update")
 						}
 					} else {

@@ -41,6 +41,7 @@ import (
 	"github.com/werf/3p-helm/internal/version"
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/helmpath"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // See https://github.com/helm/helm/issues/10166
@@ -544,7 +545,7 @@ type (
 )
 
 // Push uploads a chart to a registry.
-func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResult, error) {
+func (c *Client) Push(data []byte, ref string, opts helmopts.HelmOptions, options ...PushOption) (*PushResult, error) {
 	parsedRef, err := parseReference(ref)
 	if err != nil {
 		return nil, err
@@ -556,7 +557,7 @@ func (c *Client) Push(data []byte, ref string, options ...PushOption) (*PushResu
 	for _, option := range options {
 		option(operation)
 	}
-	meta, err := extractChartMeta(data)
+	meta, err := extractChartMeta(data, opts)
 	if err != nil {
 		return nil, err
 	}

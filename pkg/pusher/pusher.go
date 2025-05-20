@@ -21,6 +21,7 @@ import (
 
 	"github.com/werf/3p-helm/pkg/cli"
 	"github.com/werf/3p-helm/pkg/registry"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // options are generic parameters to be provided to the pusher during instantiation.
@@ -71,7 +72,7 @@ func WithPlainHTTP(plainHTTP bool) Option {
 // Pusher is an interface to support upload to the specified URL.
 type Pusher interface {
 	// Push file content by url string
-	Push(chartRef, url string, options ...Option) error
+	Push(chartRef, url string, opts helmopts.HelmOptions, options ...Option) error
 }
 
 // Constructor is the function for every pusher which creates a specific instance

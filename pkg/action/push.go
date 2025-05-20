@@ -24,6 +24,7 @@ import (
 	"github.com/werf/3p-helm/pkg/pusher"
 	"github.com/werf/3p-helm/pkg/registry"
 	"github.com/werf/3p-helm/pkg/uploader"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // Push is the action for uploading a chart.
@@ -90,7 +91,7 @@ func NewPushWithOpts(opts ...PushOpt) *Push {
 }
 
 // Run executes 'helm push' against the given chart archive.
-func (p *Push) Run(chartRef string, remote string) (string, error) {
+func (p *Push) Run(chartRef string, remote string, opts helmopts.HelmOptions) (string, error) {
 	var out strings.Builder
 
 	c := uploader.ChartUploader{
@@ -108,5 +109,5 @@ func (p *Push) Run(chartRef string, remote string) (string, error) {
 		c.Options = append(c.Options, pusher.WithRegistryClient(p.cfg.RegistryClient))
 	}
 
-	return out.String(), c.UploadTo(chartRef, remote)
+	return out.String(), c.UploadTo(chartRef, remote, opts)
 }

@@ -8,16 +8,18 @@ import (
 )
 
 type RuntimeData interface {
-	DecodeAndLoadSecrets(ctx context.Context, loadedChartFiles []*file.ChartExtenderBufferedFile, noSecretsWorkingDir bool, secretsManager *secrets_manager.SecretsManager, opts DecodeAndLoadSecretsOptions) error
-	GetEncodedSecretValues(ctx context.Context, secretsManager *secrets_manager.SecretsManager, noSecretsWorkingDir bool) (map[string]interface{}, error)
+	DecodeAndLoadSecrets(ctx context.Context, loadedChartFiles []*file.ChartExtenderBufferedFile, secretsManager *secrets_manager.SecretsManager, opts DecodeAndLoadSecretsOptions) error
+	GetEncodedSecretValues(ctx context.Context, secretsManager *secrets_manager.SecretsManager, secretsWorkingDir string, noDecryptSecrets bool) (map[string]interface{}, error)
 	GetDecryptedSecretValues() map[string]interface{}
 	GetDecryptedSecretFilesData() map[string]string
 	GetSecretValuesToMask() []string
 }
 
 type DecodeAndLoadSecretsOptions struct {
-	ChartFileReader            file.ChartFileReader
+	ChartDir                   string
 	CustomSecretValueFiles     []string
 	LoadFromLocalFilesystem    bool
+	NoDecryptSecrets           bool
+	SecretsWorkingDir          string
 	WithoutDefaultSecretValues bool
 }

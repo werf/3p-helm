@@ -33,6 +33,7 @@ import (
 	"github.com/werf/3p-helm/pkg/provenance"
 	"github.com/werf/3p-helm/pkg/registry"
 	"github.com/werf/3p-helm/pkg/repo"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // Resolver resolves dependencies from semantic version ranges to a particular version.
@@ -52,7 +53,7 @@ func New(chartpath, cachepath string, registryClient *registry.Client) *Resolver
 }
 
 // Resolve resolves dependencies and returns a lock file with the resolution.
-func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string) (*chart.Lock, error) {
+func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string, opts helmopts.HelmOptions) (*chart.Lock, error) {
 
 	// Now we clone the dependencies, locking as we go.
 	locked := make([]*chart.Dependency, len(reqs))
@@ -83,7 +84,7 @@ func (r *Resolver) Resolve(reqs []*chart.Dependency, repoNames map[string]string
 				return nil, err
 			}
 
-			ch, err := loader.LoadDir(chartpath)
+			ch, err := loader.LoadDir(chartpath, opts)
 			if err != nil {
 				return nil, err
 			}

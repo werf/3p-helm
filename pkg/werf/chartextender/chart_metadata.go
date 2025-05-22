@@ -2,11 +2,6 @@ package chartextender
 
 import "github.com/werf/3p-helm/pkg/chart"
 
-var DefaultChartName string
-var ChartAppVersion string
-var DefaultChartVersion string
-var DefaultChartAPIVersion string
-
 type GetHelmChartMetadataOptions struct {
 	OverrideAppVersion string
 	DefaultAPIVersion  string

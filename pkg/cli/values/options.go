@@ -26,10 +26,10 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/werf/3p-helm/pkg/chart"
-	"github.com/werf/3p-helm/pkg/chart/loader"
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/strvals"
+	"github.com/werf/3p-helm/pkg/werf/file"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // Options captures the different ways to specify values
@@ -44,7 +44,7 @@ type Options struct {
 
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set-json, --set, --set-string, or --set-file, marshaling them to YAML
-func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, error) {
+func (opts *Options) MergeValues(p getter.Providers, options helmopts.HelmOptions) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
@@ -53,8 +53,8 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 
 		var bytes []byte
 		var err error
-		if chart.CurrentChartType == chart.ChartTypeChart && loader.ChartFileReader != nil {
-			bytes, err = loader.ChartFileReader.ReadChartFile(context.Background(), filePath)
+		if options.ChartLoadOpts.ChartType == helmopts.ChartTypeChart && file.ChartFileReader != nil {
+			bytes, err = file.ChartFileReader.ReadChartFile(context.Background(), filePath)
 			if err != nil {
 				return nil, err
 			}
@@ -97,8 +97,8 @@ func (opts *Options) MergeValues(p getter.Providers) (map[string]interface{}, er
 		reader := func(rs []rune) (interface{}, error) {
 			var bytes []byte
 			var err error
-			if chart.CurrentChartType == chart.ChartTypeChart && loader.ChartFileReader != nil {
-				bytes, err = loader.ChartFileReader.ReadChartFile(context.Background(), string(rs))
+			if options.ChartLoadOpts.ChartType == helmopts.ChartTypeChart && file.ChartFileReader != nil {
+				bytes, err = file.ChartFileReader.ReadChartFile(context.Background(), string(rs))
 			} else {
 				bytes, err = readFile(string(rs), p)
 			}

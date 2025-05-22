@@ -28,6 +28,7 @@ import (
 	"github.com/werf/3p-helm/pkg/action"
 	"github.com/werf/3p-helm/pkg/downloader"
 	"github.com/werf/3p-helm/pkg/getter"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const dependencyBuildDesc = `
@@ -68,7 +69,16 @@ func newDependencyBuildCmd(cfg *action.Configuration, out io.Writer) *cobra.Comm
 			if client.Verify {
 				man.Verify = downloader.VerifyIfPossible
 			}
-			err := man.Build()
+
+			opts := helmopts.HelmOptions{
+				ChartLoadOpts: helmopts.ChartLoadOptions{
+					ChartDir:      chartpath,
+					DepDownloader: man,
+					NoSecrets:     true,
+				},
+			}
+
+			err := man.Build(opts)
 			if e, ok := err.(downloader.ErrRepoNotFound); ok {
 				return fmt.Errorf("%s. Please add the missing repos via 'helm repo add'", e.Error())
 			}

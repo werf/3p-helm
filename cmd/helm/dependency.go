@@ -23,6 +23,7 @@ import (
 
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const dependencyDesc = `
@@ -111,7 +112,7 @@ func newDependencyListCmd(out io.Writer) *cobra.Command {
 			if len(args) > 0 {
 				chartpath = filepath.Clean(args[0])
 			}
-			return client.List(chartpath, out)
+			return client.List(chartpath, out, helmopts.HelmOptions{})
 		},
 	}
 

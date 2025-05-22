@@ -24,6 +24,7 @@ import (
 
 	"github.com/werf/3p-helm/pkg/pusher"
 	"github.com/werf/3p-helm/pkg/registry"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // ChartUploader handles uploading a chart.
@@ -39,7 +40,7 @@ type ChartUploader struct {
 }
 
 // UploadTo uploads a chart. Depending on the settings, it may also upload a provenance file.
-func (c *ChartUploader) UploadTo(ref, remote string) error {
+func (c *ChartUploader) UploadTo(ref, remote string, opts helmopts.HelmOptions) error {
 	u, err := url.Parse(remote)
 	if err != nil {
 		return errors.Errorf("invalid chart URL format: %s", remote)
@@ -54,5 +55,5 @@ func (c *ChartUploader) UploadTo(ref, remote string) error {
 		return err
 	}
 
-	return p.Push(ref, u.String(), c.Options...)
+	return p.Push(ref, u.String(), opts, c.Options...)
 }

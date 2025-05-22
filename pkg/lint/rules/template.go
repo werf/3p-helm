@@ -37,6 +37,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/engine"
 	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 var (
@@ -45,12 +46,12 @@ var (
 )
 
 // Templates lints the templates in the Linter.
-func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool) {
-	TemplatesWithKubeVersion(linter, values, namespace, nil)
+func Templates(linter *support.Linter, values map[string]interface{}, namespace string, _ bool, opts helmopts.HelmOptions) {
+	TemplatesWithKubeVersion(linter, values, namespace, nil, opts)
 }
 
 // TemplatesWithKubeVersion lints the templates in the Linter, allowing to specify the kubernetes version.
-func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) {
+func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, opts helmopts.HelmOptions) {
 	fpath := "templates/"
 	templatesPath := filepath.Join(linter.ChartDir, fpath)
 
@@ -62,7 +63,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 	}
 
 	// Load chart and parse templates
-	chart, err := loader.Load(linter.ChartDir)
+	chart, err := loader.Load(linter.ChartDir, opts)
 
 	chartLoaded := linter.RunLinterRule(support.ErrorSev, fpath, err)
 
@@ -98,7 +99,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 	}
 	var e engine.Engine
 	e.LintMode = true
-	renderedContentMap, err := e.Render(chart, valuesToRender)
+	renderedContentMap, err := e.Render(chart, valuesToRender, opts)
 
 	renderOk := linter.RunLinterRule(support.ErrorSev, fpath, err)
 

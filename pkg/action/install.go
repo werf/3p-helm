@@ -32,9 +32,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/pkg/errors"
-	"github.com/werf/3p-helm/pkg/phases"
-	"github.com/werf/3p-helm/pkg/phases/phasemanagers"
-	"github.com/werf/3p-helm/pkg/phases/stages"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -49,6 +46,9 @@ import (
 	"github.com/werf/3p-helm/pkg/getter"
 	"github.com/werf/3p-helm/pkg/kube"
 	kubefake "github.com/werf/3p-helm/pkg/kube/fake"
+	"github.com/werf/3p-helm/pkg/phases"
+	"github.com/werf/3p-helm/pkg/phases/phasemanagers"
+	"github.com/werf/3p-helm/pkg/phases/stages"
 	"github.com/werf/3p-helm/pkg/postrender"
 	"github.com/werf/3p-helm/pkg/registry"
 	"github.com/werf/3p-helm/pkg/release"
@@ -56,6 +56,7 @@ import (
 	"github.com/werf/3p-helm/pkg/repo"
 	"github.com/werf/3p-helm/pkg/storage"
 	"github.com/werf/3p-helm/pkg/storage/driver"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // NOTESFILE_SUFFIX that we want to treat special. It goes through the templating engine
@@ -335,7 +336,7 @@ func (i *Install) RunWithContext(ctx context.Context, chrt *chart.Chart, vals ma
 	}
 
 	var manifestDoc *bytes.Buffer
-	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS)
+	rel.Hooks, manifestDoc, rel.Info.Notes, err = i.cfg.renderResources(chrt, valuesToRender, i.ReleaseName, i.OutputDir, i.SubNotes, i.UseReleaseName, i.IncludeCRDs, i.PostRenderer, interactWithRemote, i.EnableDNS, helmopts.HelmOptions{})
 	// Even for errors, attach this if available
 	if manifestDoc != nil {
 		rel.Manifest = manifestDoc.String()

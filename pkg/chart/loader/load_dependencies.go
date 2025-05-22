@@ -19,6 +19,7 @@ import (
 
 	"github.com/werf/3p-helm/pkg/chart"
 	"github.com/werf/3p-helm/pkg/werf/file"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 	"github.com/werf/common-go/pkg/locker"
 	"github.com/werf/common-go/pkg/util"
 	"github.com/werf/lockgate"
@@ -28,8 +29,6 @@ import (
 
 var localCacheDir string
 var serviceDir string
-var DepsBuildFunc func() error
-var SetChartPathFunc func(string)
 
 var NoChartLockWarning = `Cannot automatically download chart dependencies without Chart.lock or requirements.lock.`
 
@@ -72,6 +71,7 @@ func LoadChartDependencies(
 	loadChartDirFunc func(ctx context.Context, dir string) ([]*file.ChartExtenderBufferedFile, error),
 	chartDir string,
 	loadedChartFiles []*file.ChartExtenderBufferedFile,
+	opts helmopts.HelmOptions,
 ) ([]*file.ChartExtenderBufferedFile, error) {
 	res := loadedChartFiles
 
@@ -161,7 +161,7 @@ func LoadChartDependencies(
 		return res, nil
 	}
 
-	depsDir, err := getPreparedChartDependenciesDir(ctx, metadataFile, metadataLockFile)
+	depsDir, err := getPreparedChartDependenciesDir(ctx, metadataFile, metadataLockFile, opts)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing chart dependencies: %w", err)
 	}
@@ -288,9 +288,9 @@ func createChartDependenciesDir(destDir string, metadataBytes, metadataLockBytes
 	return nil
 }
 
-func getPreparedChartDependenciesDir(ctx context.Context, metadataFile, metadataLockFile *file.ChartExtenderBufferedFile) (string, error) {
+func getPreparedChartDependenciesDir(ctx context.Context, metadataFile, metadataLockFile *file.ChartExtenderBufferedFile, opts helmopts.HelmOptions) (string, error) {
 	return prepareDependenciesDir(ctx, metadataFile.Data, metadataLockFile.Data, func(tmpDepsDir string) error {
-		if err := buildChartDependenciesInDir(ctx, tmpDepsDir); err != nil {
+		if err := buildChartDependenciesInDir(ctx, tmpDepsDir, opts); err != nil {
 			return fmt.Errorf("error building chart dependencies: %w", err)
 		}
 		return nil
@@ -428,16 +428,11 @@ func makeDependencyArchiveName(depName, depVersion string) string {
 	return fmt.Sprintf("%s-%s.tgz", depName, depVersion)
 }
 
-func buildChartDependenciesInDir(ctx context.Context, targetDir string) error {
+func buildChartDependenciesInDir(ctx context.Context, targetDir string, opts helmopts.HelmOptions) error {
 	logboek.Context(ctx).Debug().LogF("-- BuildChartDependenciesInDir\n")
 
-	originalChartType := chart.CurrentChartType
-	chart.CurrentChartType = chart.ChartTypeChartStub
-	defer func() {
-		chart.CurrentChartType = originalChartType
-	}()
+	opts.ChartLoadOpts.ChartType = helmopts.ChartTypeChartStub
+	opts.ChartLoadOpts.DepDownloader.SetChartPath(targetDir)
 
-	SetChartPathFunc(targetDir)
-	err := DepsBuildFunc()
-	return err
+	return opts.ChartLoadOpts.DepDownloader.Build(opts)
 }

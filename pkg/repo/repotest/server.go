@@ -198,7 +198,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		t.Fatal("could not load chart into memory")
 	}
 
-	result, err := registryClient.Push(contentBytes, ref)
+	result, err := registryClient.Push(contentBytes, ref, helmopts.HelmOptions{})
 	if err != nil {
 		t.Fatalf("error pushing dependent chart: %s", err)
 	}
@@ -226,7 +226,7 @@ func (srv *OCIServer) Run(t *testing.T, opts ...OCIServerOpt) {
 		t.Fatal("could not load chart into memory")
 	}
 
-	result, err = registryClient.Push(contentBytes, dependingRef)
+	result, err = registryClient.Push(contentBytes, dependingRef, helmopts.HelmOptions{})
 	if err != nil {
 		t.Fatalf("error pushing depending chart: %s", err)
 	}
@@ -333,7 +333,7 @@ func (s *Server) CopyCharts(origin string) ([]string, error) {
 // CreateIndex will read docroot and generate an index.yaml file.
 func (s *Server) CreateIndex() error {
 	// generate the index
-	index, err := repo.IndexDirectory(s.docroot, s.URL())
+	index, err := repo.IndexDirectory(s.docroot, s.URL(), helmopts.HelmOptions{})
 	if err != nil {
 		return err
 	}

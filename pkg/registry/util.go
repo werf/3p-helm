@@ -25,14 +25,15 @@ import (
 	"strings"
 	"time"
 
-	helmtime "github.com/werf/3p-helm/pkg/time"
-
 	"github.com/Masterminds/semver/v3"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	orascontext "oras.land/oras-go/pkg/context"
 	"oras.land/oras-go/pkg/registry"
+
+	helmtime "github.com/werf/3p-helm/pkg/time"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 
 	"github.com/werf/3p-helm/internal/tlsutil"
 	"github.com/werf/3p-helm/pkg/chart"
@@ -97,8 +98,8 @@ func GetTagMatchingVersionOrConstraint(tags []string, versionString string) (str
 }
 
 // extractChartMeta is used to extract a chart metadata from a byte array
-func extractChartMeta(chartData []byte) (*chart.Metadata, error) {
-	ch, err := loader.LoadArchive(bytes.NewReader(chartData))
+func extractChartMeta(chartData []byte, opts helmopts.HelmOptions) (*chart.Metadata, error) {
+	ch, err := loader.LoadArchive(bytes.NewReader(chartData), opts)
 	if err != nil {
 		return nil, err
 	}

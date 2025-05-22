@@ -25,6 +25,7 @@ import (
 
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const showDesc = `
@@ -236,7 +237,7 @@ func runShow(args []string, client *action.Show) (string, error) {
 		cp = path
 	}
 
-	return client.Run(cp)
+	return client.Run(cp, helmopts.HelmOptions{})
 }
 
 func addRegistryClient(client *action.Show) error {

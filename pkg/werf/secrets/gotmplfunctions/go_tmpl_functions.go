@@ -1,4 +1,4 @@
-package loader
+package gotmplfunctions
 
 import (
 	"fmt"

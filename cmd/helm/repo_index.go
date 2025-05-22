@@ -26,6 +26,7 @@ import (
 
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/repo"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const repoIndexDesc = `
@@ -82,13 +83,13 @@ func (i *repoIndexOptions) run(_ io.Writer) error {
 		return err
 	}
 
-	return index(path, i.url, i.merge, i.json)
+	return index(path, i.url, i.merge, i.json, helmopts.HelmOptions{})
 }
 
-func index(dir, url, mergeTo string, json bool) error {
+func index(dir, url, mergeTo string, json bool, opts helmopts.HelmOptions) error {
 	out := filepath.Join(dir, "index.yaml")
 
-	i, err := repo.IndexDirectory(dir, url)
+	i, err := repo.IndexDirectory(dir, url, opts)
 	if err != nil {
 		return err
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/werf/3p-helm/cmd/helm/require"
 	"github.com/werf/3p-helm/pkg/action"
 	"github.com/werf/3p-helm/pkg/pusher"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const pushDesc = `
@@ -81,7 +82,15 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 				action.WithPlainHTTP(o.plainHTTP),
 				action.WithPushOptWriter(out))
 			client.Settings = settings
-			output, err := client.Run(chartRef, remote)
+
+			opts := helmopts.HelmOptions{
+				ChartLoadOpts: helmopts.ChartLoadOptions{
+					ChartDir:  chartRef,
+					NoSecrets: true,
+				},
+			}
+
+			output, err := client.Run(chartRef, remote, opts)
 			if err != nil {
 				return err
 			}

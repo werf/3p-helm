@@ -29,6 +29,7 @@ import (
 	"github.com/werf/3p-helm/pkg/cli/values"
 	"github.com/werf/3p-helm/pkg/downloader"
 	"github.com/werf/3p-helm/pkg/getter"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 const packageDesc = `
@@ -67,10 +68,17 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					return errors.New("--keyring is required for signing a package")
 				}
 			}
+
+			opts := helmopts.HelmOptions{
+				ChartLoadOpts: helmopts.ChartLoadOptions{
+					NoSecrets: true,
+				},
+			}
+
 			client.RepositoryConfig = settings.RepositoryConfig
 			client.RepositoryCache = settings.RepositoryCache
 			p := getter.All(settings)
-			vals, err := valueOpts.MergeValues(p)
+			vals, err := valueOpts.MergeValues(p, opts)
 			if err != nil {
 				return err
 			}
@@ -84,6 +92,8 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					return err
 				}
 
+				opts.ChartLoadOpts.ChartDir = path
+
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
 						Out:              io.Discard,
@@ -96,11 +106,14 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 						RepositoryCache:  settings.RepositoryCache,
 					}
 
-					if err := downloadManager.Update(); err != nil {
+					opts.ChartLoadOpts.DepDownloader = downloadManager
+
+					if err := downloadManager.Update(opts); err != nil {
 						return err
 					}
 				}
-				p, err := client.Run(path, vals)
+
+				p, err := client.Run(path, vals, opts)
 				if err != nil {
 					return err
 				}

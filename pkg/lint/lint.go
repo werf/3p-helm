@@ -22,15 +22,16 @@ import (
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/lint/rules"
 	"github.com/werf/3p-helm/pkg/lint/support"
+	"github.com/werf/3p-helm/pkg/werf/helmopts"
 )
 
 // All runs all of the available linters on the given base directory.
-func All(basedir string, values map[string]interface{}, namespace string, _ bool) support.Linter {
-	return AllWithKubeVersion(basedir, values, namespace, nil)
+func All(basedir string, values map[string]interface{}, namespace string, _ bool, opts helmopts.HelmOptions) support.Linter {
+	return AllWithKubeVersion(basedir, values, namespace, nil, opts)
 }
 
 // AllWithKubeVersion runs all the available linters on the given base directory, allowing to specify the kubernetes version.
-func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion) support.Linter {
+func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace string, kubeVersion *chartutil.KubeVersion, opts helmopts.HelmOptions) support.Linter {
 	// Using abs path to get directory context
 	chartDir, _ := filepath.Abs(basedir)
 
@@ -39,7 +40,7 @@ func AllWithKubeVersion(basedir string, values map[string]interface{}, namespace
 		rules.Chartfile(&linter)
 	}
 	rules.ValuesWithOverrides(&linter, values)
-	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion)
-	rules.Dependencies(&linter)
+	rules.TemplatesWithKubeVersion(&linter, values, namespace, kubeVersion, opts)
+	rules.Dependencies(&linter, opts)
 	return linter
 }

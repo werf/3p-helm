@@ -58,6 +58,7 @@ type Chart struct {
 	dependencies []*Chart
 
 	SecretsRuntimeData runtimedata.RuntimeData `json:"-"`
+	ExtraValues        map[string]interface{}  `json:"-"`
 }
 
 type CRD struct {

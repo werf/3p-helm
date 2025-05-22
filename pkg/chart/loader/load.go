@@ -56,7 +56,7 @@ func Loader(name string) (ChartLoader, error) {
 }
 
 func loader(name string) (bool, error) {
-	if ChartFileReader == nil {
+	if file.ChartFileReader == nil {
 		fi, err := os.Stat(name)
 		if err != nil {
 			return false, err
@@ -66,7 +66,7 @@ func loader(name string) (bool, error) {
 		}
 		return false, nil
 	}
-	return ChartFileReader.ChartIsDir(name)
+	return file.ChartFileReader.ChartIsDir(name)
 }
 
 // Load takes a string name, tries to resolve it to a file or directory, and then loads it.

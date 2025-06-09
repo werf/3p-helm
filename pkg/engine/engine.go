@@ -25,7 +25,9 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"unicode"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"k8s.io/client-go/rest"
 
@@ -34,6 +36,7 @@ import (
 	"github.com/werf/3p-helm/pkg/werf/helmopts"
 	"github.com/werf/3p-helm/pkg/werf/secrets/gotmplfunctions"
 	"github.com/werf/3p-helm/pkg/werf/secrets/runtimedata"
+	"github.com/werf/common-go/pkg/util"
 )
 
 // Engine is an implementation of the Helm rendering implementation for templates.
@@ -142,7 +145,14 @@ func includeFun(t *template.Template, includedNames map[string]int) func(string,
 		}
 		err := t.ExecuteTemplate(&buf, name, data)
 		includedNames[name]--
-		return buf.String(), err
+		if err != nil {
+			return "", detailedTemplateError(t, detailedTemplateErrorData{
+				funcName:     "include",
+				templateName: name,
+			}, Debug, err)
+		}
+
+		return buf.String(), nil
 	}
 }
 
@@ -174,6 +184,9 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		t.Funcs(template.FuncMap{
 			"include": includeFun(t, includedNames),
 			"tpl":     tplFun(t, includedNames, strict),
+
+			"include_debug": includeDebugFun(t, includedNames),
+			"tpl_debug":     tplDebugFun(t, includedNames, strict),
 		})
 
 		// We need a .New template, as template text which is just blanks
@@ -184,12 +197,20 @@ func tplFun(parent *template.Template, includedNames map[string]int, strict bool
 		// text string. (Maybe we could use a hash appended to the name?)
 		t, err = t.New(parent.Name()).Parse(tpl)
 		if err != nil {
-			return "", errors.Wrapf(err, "cannot parse template %q", tpl)
+			return "", detailedTemplateError(t, detailedTemplateErrorData{
+				funcName:        "tpl",
+				templateName:    parent.Name(),
+				templateContent: tpl,
+			}, Debug, err)
 		}
 
 		var buf strings.Builder
 		if err := t.Execute(&buf, vals); err != nil {
-			return "", errors.Wrapf(err, "error during tpl function execution for %q", tpl)
+			return "", detailedTemplateError(t, detailedTemplateErrorData{
+				funcName:        "tpl",
+				templateName:    parent.Name(),
+				templateContent: tpl,
+			}, Debug, err)
 		}
 
 		// See comment in renderWithReferences explaining the <no value> hack.
@@ -205,6 +226,9 @@ func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.
 	// Add the template-rendering functions here so we can close over t.
 	funcMap["include"] = includeFun(t, includedNames)
 	funcMap["tpl"] = tplFun(t, includedNames, e.Strict)
+
+	funcMap["include_debug"] = includeDebugFun(t, includedNames)
+	funcMap["tpl_debug"] = tplDebugFun(t, includedNames, e.Strict)
 
 	// Add the `required` function here so we can use lintMode
 	funcMap["required"] = func(warn string, val interface{}) (interface{}, error) {
@@ -252,6 +276,22 @@ func (e Engine) initFunMap(t *template.Template, secretsRuntimeData runtimedata.
 		}
 	}
 
+	funcMap["printf_debug"] = func(format string, args ...interface{}) string {
+		if Debug {
+			log.Printf("-- printf_debug format %q result:\n%s\n\n", format, fmt.Sprintf(format, args...))
+		}
+
+		return ""
+	}
+
+	funcMap["dump_debug"] = func(obj interface{}) string {
+		if Debug {
+			log.Printf("-- dump_debug result:\n%s\n\n", spew.Sdump(obj))
+		}
+
+		return ""
+	}
+
 	switch opts.ChartLoadOpts.ChartType {
 	case helmopts.ChartTypeBundle, helmopts.ChartTypeChart, helmopts.ChartTypeChartStub:
 		gotmplfunctions.SetupWerfSecretFile(secretsRuntimeData, funcMap)
@@ -295,7 +335,10 @@ func (e Engine) render(tpls map[string]renderable, secretsRuntimeData runtimedat
 	for _, filename := range keys {
 		r := tpls[filename]
 		if _, err := t.New(filename).Parse(r.tpl); err != nil {
-			return map[string]string{}, cleanupParseError(filename, err)
+			return map[string]string{}, detailedTemplateError(t, detailedTemplateErrorData{
+				templateName:    filename,
+				templateContent: r.tpl,
+			}, Debug, cleanupParseError(filename, err))
 		}
 	}
 
@@ -311,7 +354,10 @@ func (e Engine) render(tpls map[string]renderable, secretsRuntimeData runtimedat
 		vals["Template"] = chartutil.Values{"Name": filename, "BasePath": tpls[filename].basePath}
 		var buf strings.Builder
 		if err := t.ExecuteTemplate(&buf, filename, vals); err != nil {
-			return map[string]string{}, cleanupExecError(filename, err)
+			return map[string]string{}, detailedTemplateError(t, detailedTemplateErrorData{
+				templateName:    filename,
+				templateContent: tpls[filename].tpl,
+			}, Debug, cleanupExecError(filename, err))
 		}
 
 		// Work around the issue where Go will emit "<no value>" even if Options(missing=zero)
@@ -455,3 +501,159 @@ func isTemplateValid(ch *chart.Chart, templateName string) bool {
 func isLibraryChart(c *chart.Chart) bool {
 	return strings.EqualFold(c.Metadata.Type, "library")
 }
+
+func detailedTemplateError(tmpl *template.Template, d detailedTemplateErrorData, debug bool, err error) error {
+	if debug {
+		if d.templateContent == "" {
+			d.templateContent, _ = templateContentFromTree(tmpl, d.templateName)
+		}
+
+		var funcNameMsg string
+		if d.funcName != "" {
+			funcNameMsg = fmt.Sprintf("  Function name: %q\n", d.funcName)
+		}
+
+		return fmt.Errorf(
+			"%w\n\nDetails:\n%s  Template name: %q\n  Template content:\n%s",
+			err,
+			funcNameMsg,
+			d.templateName,
+			strings.TrimRightFunc(util.NumerateLines(d.templateContent, 1), unicode.IsSpace),
+		)
+	}
+
+	if strings.Contains(err.Error(), TemplateErrHint) {
+		return err
+	}
+
+	return fmt.Errorf("%w\n%s", err, TemplateErrHint)
+}
+
+type detailedTemplateErrorData struct {
+	funcName        string
+	templateName    string
+	templateContent string
+}
+
+func templateContentFromTree(tmpl *template.Template, name string) (string, error) {
+	t := tmpl.Lookup(name)
+	if t == nil || t.Tree == nil || t.Tree.Root == nil {
+		return "", fmt.Errorf("template %q not found", name)
+	}
+
+	return strings.TrimSpace(t.Tree.Root.String()), nil
+}
+
+func includeDebugFun(t *template.Template, includedNames map[string]int) func(string, interface{}) (string, error) {
+	return func(name string, data interface{}) (string, error) {
+		var buf strings.Builder
+		if v, ok := includedNames[name]; ok {
+			if v > recursionMaxNums {
+				return "", errors.Wrapf(fmt.Errorf("unable to execute template"), "rendering template has a nested reference name: %s", name)
+			}
+			includedNames[name]++
+		} else {
+			includedNames[name] = 1
+		}
+		execErr := t.ExecuteTemplate(&buf, name, data)
+		includedNames[name]--
+
+		var templateContent string
+		if execErr != nil || Debug {
+			templateContent, _ = templateContentFromTree(t, name)
+		}
+
+		if Debug {
+			log.Printf("-- include_debug template %q content:\n%s\n\n", name, templateContent)
+		}
+
+		if execErr != nil {
+			return "", detailedTemplateError(t, detailedTemplateErrorData{
+				funcName:        "include_debug",
+				templateName:    name,
+				templateContent: templateContent,
+			}, Debug, execErr)
+		}
+
+		if Debug {
+			log.Printf("-- include_debug template %q result:\n%s\n\n", name, buf.String())
+		}
+
+		return buf.String(), nil
+	}
+}
+
+func tplDebugFun(parent *template.Template, includedNames map[string]int, strict bool) func(string, interface{}) (string, error) {
+	return func(tpl string, vals interface{}) (string, error) {
+		// No templating required if plain text with no templates passed.
+		if !strings.Contains(tpl, "{{") && !strings.Contains(tpl, "}}") {
+			return tpl, nil
+		}
+
+		t, err := parent.Clone()
+		if err != nil {
+			return "", errors.Wrapf(err, "cannot clone template")
+		}
+
+		// Re-inject the missingkey option, see text/template issue https://github.com/golang/go/issues/43022
+		// We have to go by strict from our engine configuration, as the option fields are private in Template.
+		// TODO: Remove workaround (and the strict parameter) once we build only with golang versions with a fix.
+		if strict {
+			t.Option("missingkey=error")
+		} else {
+			t.Option("missingkey=zero")
+		}
+
+		// Re-inject 'include' so that it can close over our clone of t;
+		// this lets any 'define's inside tpl be 'include'd.
+		t.Funcs(template.FuncMap{
+			"include": includeFun(t, includedNames),
+			"tpl":     tplFun(t, includedNames, strict),
+
+			"include_debug": includeDebugFun(t, includedNames),
+			"tpl_debug":     tplDebugFun(t, includedNames, strict),
+		})
+
+		// We need a .New template, as template text which is just blanks
+		// or comments after parsing out defines just addes new named
+		// template definitions without changing the main template.
+		// https://pkg.go.dev/text/template#Template.Parse
+		// Use the parent's name for lack of a better way to identify the tpl
+		// text string. (Maybe we could use a hash appended to the name?)
+		t, err = t.New(parent.Name()).Parse(tpl)
+		if err != nil {
+			return "", detailedTemplateError(t, detailedTemplateErrorData{
+				funcName:        "tpl_debug",
+				templateName:    parent.Name(),
+				templateContent: tpl,
+			}, Debug, err)
+		}
+
+		if Debug {
+			log.Printf("-- tpl_debug %q content:\n%s\n\n", parent.Name(), tpl)
+		}
+
+		var buf strings.Builder
+		if err := t.Execute(&buf, vals); err != nil {
+			return "", detailedTemplateError(t, detailedTemplateErrorData{
+				funcName:        "tpl_debug",
+				templateName:    parent.Name(),
+				templateContent: tpl,
+			}, Debug, err)
+		}
+
+		// See comment in renderWithReferences explaining the <no value> hack.
+		result := strings.ReplaceAll(buf.String(), "<no value>", "")
+
+		if Debug {
+			log.Printf("-- tpl_debug %q result:\n%s\n\n", parent.Name(), result)
+		}
+
+		return result, nil
+	}
+}
+
+var (
+	TemplateErrHint = `Set log level to "debug" to get more details about this error.`
+	Debug           bool
+)

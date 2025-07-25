@@ -183,16 +183,15 @@ func (s *Storage) removeLeastRecent(name string, max int) error {
 
 	var toDelete []*rspb.Release
 	for _, rel := range h {
-		if lastDeployed == nil {
-			break
-		}
-
 		// once we have enough releases to delete to reach the max, stop
 		if len(h)-len(toDelete) == max {
 			break
 		}
-
-		if rel.Version < lastDeployed.Version {
+		if lastDeployed != nil {
+			if rel.Version != lastDeployed.Version {
+				toDelete = append(toDelete, rel)
+			}
+		} else {
 			toDelete = append(toDelete, rel)
 		}
 	}

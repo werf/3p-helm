@@ -92,8 +92,6 @@ func newPackageCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 					return err
 				}
 
-				opts.ChartLoadOpts.ChartDir = path
-
 				if client.DependencyUpdate {
 					downloadManager := &downloader.Manager{
 						Out:              io.Discard,

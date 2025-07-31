@@ -6,7 +6,6 @@ type HelmOptions struct {
 
 type ChartLoadOptions struct {
 	ChartAppVersion        string
-	ChartDir               string
 	ChartType              ChartType
 	DefaultChartAPIVersion string
 	DefaultChartName       string

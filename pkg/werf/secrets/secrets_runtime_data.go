@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 
 	"sigs.k8s.io/yaml"
 
@@ -77,7 +76,7 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	}
 
 	if len(secretDirFiles) > 0 {
-		if data, err := LoadChartSecretDirFilesData(secretDirFiles, encoder, opts.ChartDir); err != nil {
+		if data, err := LoadChartSecretDirFilesData(secretDirFiles, encoder); err != nil {
 			return fmt.Errorf("error loading secret files data: %w", err)
 		} else {
 			secretsRuntimeData.decryptedSecretFilesData = data
@@ -88,7 +87,7 @@ func (secretsRuntimeData *SecretsRuntimeData) DecodeAndLoadSecrets(
 	}
 
 	if len(loadedSecretValuesFiles) > 0 {
-		if values, err := LoadChartSecretValueFiles(loadedSecretValuesFiles, encoder, opts.ChartDir); err != nil {
+		if values, err := LoadChartSecretValueFiles(loadedSecretValuesFiles, encoder); err != nil {
 			return fmt.Errorf("error loading secret value files: %w", err)
 		} else {
 			secretsRuntimeData.decryptedSecretValues = values
@@ -151,19 +150,18 @@ func (secretsRuntimeData *SecretsRuntimeData) GetSecretValuesToMask() []string {
 func LoadChartSecretValueFiles(
 	secretDirFiles []*werffile.ChartExtenderBufferedFile,
 	encoder *secret.YamlEncoder,
-	chartDir string,
 ) (map[string]interface{}, error) {
 	var res map[string]interface{}
 
 	for _, file := range secretDirFiles {
 		decodedData, err := encoder.DecryptYamlData(file.Data)
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode file %q secret data: %w", filepath.Join(chartDir, file.Name), err)
+			return nil, fmt.Errorf("cannot decode file %q secret data: %w", file.Name, err)
 		}
 
 		rawValues := map[string]interface{}{}
 		if err := yaml.Unmarshal(decodedData, &rawValues); err != nil {
-			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", filepath.Join(chartDir, file.Name), err)
+			return nil, fmt.Errorf("cannot unmarshal secret values file %s: %w", file.Name, err)
 		}
 
 		res = CoalesceTablesFunc(rawValues, res)

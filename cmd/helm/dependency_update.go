@@ -75,7 +75,6 @@ func newDependencyUpdateCmd(cfg *action.Configuration, out io.Writer) *cobra.Com
 
 			opts := helmopts.HelmOptions{
 				ChartLoadOpts: helmopts.ChartLoadOptions{
-					ChartDir:      chartpath,
 					DepDownloader: man,
 					NoSecrets:     true,
 				},

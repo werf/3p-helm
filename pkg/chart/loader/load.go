@@ -96,7 +96,6 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 	subcharts := make(map[string][]*BufferedFile)
 
 	c.SecretsRuntimeData = secrets.NewSecretsRuntimeData()
-	c.ExtraValues = opts.ChartLoadOpts.ExtraValues
 
 	// do not rely on assumed ordering of files in the chart and crash
 	// if Chart.yaml was not coming early enough to initialize metadata
@@ -181,18 +180,19 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 
 	switch opts.ChartLoadOpts.ChartType {
 	case helmopts.ChartTypeBundle:
+		c.ExtraValues = opts.ChartLoadOpts.ExtraValues
+
 		if !opts.ChartLoadOpts.NoSecrets {
 			if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
 				context.Background(),
 				convertBufferedFilesForChartExtender(files),
 				secrets_manager.Manager,
 				runtimedata.DecodeAndLoadSecretsOptions{
-					ChartDir:                   opts.ChartLoadOpts.ChartDir,
 					CustomSecretValueFiles:     opts.ChartLoadOpts.SecretValuesFiles,
 					LoadFromLocalFilesystem:    true,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
-					WithoutDefaultSecretValues: false,
+					WithoutDefaultSecretValues: opts.ChartLoadOpts.NoDefaultSecretValues,
 				},
 			); err != nil {
 				return nil, fmt.Errorf("error decoding secrets: %w", err)
@@ -203,13 +203,14 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 			c.Values = nil
 		}
 	case helmopts.ChartTypeChart:
+		c.ExtraValues = opts.ChartLoadOpts.ExtraValues
+
 		if !opts.ChartLoadOpts.NoSecrets {
 			if err := c.SecretsRuntimeData.DecodeAndLoadSecrets(
 				context.Background(),
 				convertBufferedFilesForChartExtender(files),
 				secrets_manager.Manager,
 				runtimedata.DecodeAndLoadSecretsOptions{
-					ChartDir:                   opts.ChartLoadOpts.ChartDir,
 					CustomSecretValueFiles:     opts.ChartLoadOpts.SecretValuesFiles,
 					LoadFromLocalFilesystem:    file.ChartFileReader == nil,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
@@ -245,8 +246,6 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 				convertBufferedFilesForChartExtender(files),
 				secrets_manager.Manager,
 				runtimedata.DecodeAndLoadSecretsOptions{
-					ChartDir:                   opts.ChartLoadOpts.ChartDir,
-					CustomSecretValueFiles:     opts.ChartLoadOpts.SecretValuesFiles,
 					LoadFromLocalFilesystem:    file.ChartFileReader == nil,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
@@ -263,8 +262,6 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 				convertBufferedFilesForChartExtender(files),
 				secrets_manager.Manager,
 				runtimedata.DecodeAndLoadSecretsOptions{
-					ChartDir:                   opts.ChartLoadOpts.ChartDir,
-					CustomSecretValueFiles:     opts.ChartLoadOpts.SecretValuesFiles,
 					LoadFromLocalFilesystem:    true,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,

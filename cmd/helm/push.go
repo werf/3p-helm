@@ -85,7 +85,6 @@ func newPushCmd(cfg *action.Configuration, out io.Writer) *cobra.Command {
 
 			opts := helmopts.HelmOptions{
 				ChartLoadOpts: helmopts.ChartLoadOptions{
-					ChartDir:  chartRef,
 					NoSecrets: true,
 				},
 			}

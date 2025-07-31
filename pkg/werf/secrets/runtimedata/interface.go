@@ -16,7 +16,6 @@ type RuntimeData interface {
 }
 
 type DecodeAndLoadSecretsOptions struct {
-	ChartDir                   string
 	CustomSecretValueFiles     []string
 	LoadFromLocalFilesystem    bool
 	NoDecryptSecrets           bool

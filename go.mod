@@ -1,6 +1,6 @@
 module github.com/werf/3p-helm
 
-go 1.22.7
+go 1.23.0
 
 require (
 	github.com/BurntSushi/toml v1.3.2

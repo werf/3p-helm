@@ -104,3 +104,10 @@ const (
 
 // String converts a hook phase to a printable string
 func (x HookPhase) String() string { return string(x) }
+
+const (
+	HookInstall  HookEvent = "install"
+	HookUpgrade  HookEvent = "upgrade"
+	HookRollback HookEvent = "rollback"
+	HookDelete   HookEvent = "delete"
+)

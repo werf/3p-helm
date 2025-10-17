@@ -18,7 +18,6 @@ package releaseutil
 
 import (
 	"fmt"
-	"log"
 	"path"
 	"sort"
 	"strconv"
@@ -178,20 +177,13 @@ func (file *manifestFile) sort(result *result) error {
 			DeletePolicies: []release.HookDeletePolicy{},
 		}
 
-		isUnknownHook := false
 		for _, hookType := range strings.Split(hookTypes, ",") {
 			hookType = strings.ToLower(strings.TrimSpace(hookType))
 			e, ok := events[hookType]
 			if !ok {
-				isUnknownHook = true
-				break
+				continue
 			}
 			h.Events = append(h.Events, e)
-		}
-
-		if isUnknownHook {
-			log.Printf("info: skipping unknown hook: %q", hookTypes)
-			continue
 		}
 
 		result.hooks = append(result.hooks, h)

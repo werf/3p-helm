@@ -294,7 +294,7 @@ func (u *Upgrade) prepareUpgrade(name string, chart *chart.Chart, vals map[strin
 	if err != nil {
 		return nil, nil, err
 	}
-	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chart, vals, options, caps, nil)
 	if err != nil {
 		return nil, nil, err
 	}

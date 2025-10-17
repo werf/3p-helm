@@ -135,7 +135,7 @@ type ReleaseOptions struct {
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities, runtime map[string]interface{}) (Values, error) {
 	if caps == nil {
 		caps = DefaultCapabilities
 	}
@@ -150,6 +150,7 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 			"Revision":  options.Revision,
 			"Service":   "Helm",
 		},
+		"Runtime": runtime,
 	}
 
 	vals, err := CoalesceValues(chrt, chrtVals)

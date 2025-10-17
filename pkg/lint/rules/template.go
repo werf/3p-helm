@@ -92,7 +92,7 @@ func TemplatesWithKubeVersion(linter *support.Linter, values map[string]interfac
 		return
 	}
 
-	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps)
+	valuesToRender, err := chartutil.ToRenderValues(chart, cvals, options, caps, nil)
 	if err != nil {
 		linter.RunLinterRule(support.ErrorSev, fpath, err)
 		return

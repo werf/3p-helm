@@ -457,6 +457,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		"Capabilities": vals["Capabilities"],
 		"Values":       make(chartutil.Values),
 		"Subcharts":    subCharts,
+		"Runtime":      vals["Runtime"],
 	}
 
 	// If there is a {{.Values.ThisChart}} in the parent metadata,

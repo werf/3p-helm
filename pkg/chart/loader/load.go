@@ -190,8 +190,8 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 				runtimedata.DecodeAndLoadSecretsOptions{
 					CustomSecretValueFiles:     opts.ChartLoadOpts.SecretValuesFiles,
 					LoadFromLocalFilesystem:    true,
-					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
-					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
+					NoDecryptSecrets:           opts.ChartLoadOpts.SecretKeyIgnore,
+					SecretsWorkingDir:          opts.ChartLoadOpts.SecretWorkDir,
 					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
@@ -213,8 +213,8 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 				runtimedata.DecodeAndLoadSecretsOptions{
 					CustomSecretValueFiles:     opts.ChartLoadOpts.SecretValuesFiles,
 					LoadFromLocalFilesystem:    file.ChartFileReader == nil,
-					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
-					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
+					NoDecryptSecrets:           opts.ChartLoadOpts.SecretKeyIgnore,
+					SecretsWorkingDir:          opts.ChartLoadOpts.SecretWorkDir,
 					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
@@ -247,8 +247,8 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 				secrets_manager.Manager,
 				runtimedata.DecodeAndLoadSecretsOptions{
 					LoadFromLocalFilesystem:    file.ChartFileReader == nil,
-					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
-					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
+					NoDecryptSecrets:           opts.ChartLoadOpts.SecretKeyIgnore,
+					SecretsWorkingDir:          opts.ChartLoadOpts.SecretWorkDir,
 					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
@@ -263,8 +263,8 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 				secrets_manager.Manager,
 				runtimedata.DecodeAndLoadSecretsOptions{
 					LoadFromLocalFilesystem:    true,
-					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
-					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
+					NoDecryptSecrets:           opts.ChartLoadOpts.SecretKeyIgnore,
+					SecretsWorkingDir:          opts.ChartLoadOpts.SecretWorkDir,
 					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {

@@ -14,10 +14,10 @@ type ChartLoadOptions struct {
 	DefaultValuesDisable       bool
 	DepDownloader              DepDownloader
 	ExtraValues                map[string]interface{}
-	NoDecryptSecrets           bool
 	NoSecrets                  bool
+	SecretKeyIgnore            bool
 	SecretValuesFiles          []string
-	SecretsWorkingDir          string
+	SecretWorkDir              string
 }
 
 type ChartType string

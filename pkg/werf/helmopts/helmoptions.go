@@ -5,19 +5,19 @@ type HelmOptions struct {
 }
 
 type ChartLoadOptions struct {
-	ChartAppVersion        string
-	ChartType              ChartType
-	DefaultChartAPIVersion string
-	DefaultChartName       string
-	DefaultChartVersion    string
-	DepDownloader          DepDownloader
-	NoDecryptSecrets       bool
-	NoDefaultSecretValues  bool
-	NoDefaultValues        bool
-	NoSecrets              bool
-	SecretValuesFiles      []string
-	SecretsWorkingDir      string
-	ExtraValues            map[string]interface{}
+	ChartAppVersion            string
+	ChartType                  ChartType
+	DefaultChartAPIVersion     string
+	DefaultChartName           string
+	DefaultChartVersion        string
+	DefaultSecretValuesDisable bool
+	DefaultValuesDisable       bool
+	DepDownloader              DepDownloader
+	ExtraValues                map[string]interface{}
+	NoDecryptSecrets           bool
+	NoSecrets                  bool
+	SecretValuesFiles          []string
+	SecretsWorkingDir          string
 }
 
 type ChartType string

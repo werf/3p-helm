@@ -404,3 +404,27 @@ func loadRepoConfig(file string) (*repo.File, error) {
 	}
 	return r, nil
 }
+
+type VerificationStrategyString string
+
+const (
+	VerificationStrategyStringNever      VerificationStrategyString = "never"
+	VerificationStrategyStringIfPossible VerificationStrategyString = "if-possible"
+	VerificationStrategyStringAlways     VerificationStrategyString = "always"
+	VerificationStrategyStringLater      VerificationStrategyString = "later"
+)
+
+func (s VerificationStrategyString) ToVerificationStrategy() VerificationStrategy {
+	switch s {
+	case VerificationStrategyStringNever:
+		return VerifyNever
+	case VerificationStrategyStringIfPossible:
+		return VerifyIfPossible
+	case VerificationStrategyStringAlways:
+		return VerifyAlways
+	case VerificationStrategyStringLater:
+		return VerifyLater
+	default:
+		panic("unknown VerificationStrategyString value")
+	}
+}

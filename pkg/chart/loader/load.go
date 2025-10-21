@@ -192,14 +192,14 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 					LoadFromLocalFilesystem:    true,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
-					WithoutDefaultSecretValues: opts.ChartLoadOpts.NoDefaultSecretValues,
+					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
 				return nil, fmt.Errorf("error decoding secrets: %w", err)
 			}
 		}
 
-		if opts.ChartLoadOpts.NoDefaultValues {
+		if opts.ChartLoadOpts.DefaultValuesDisable {
 			c.Values = nil
 		}
 	case helmopts.ChartTypeChart:
@@ -215,7 +215,7 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 					LoadFromLocalFilesystem:    file.ChartFileReader == nil,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
-					WithoutDefaultSecretValues: opts.ChartLoadOpts.NoDefaultSecretValues,
+					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
 				return nil, fmt.Errorf("error decoding secrets: %w", err)
@@ -236,7 +236,7 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 			Name: "templates/_werf_helpers.tpl",
 		})
 
-		if opts.ChartLoadOpts.NoDefaultValues {
+		if opts.ChartLoadOpts.DefaultValuesDisable {
 			c.Values = nil
 		}
 	case helmopts.ChartTypeSubchart:
@@ -249,7 +249,7 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 					LoadFromLocalFilesystem:    file.ChartFileReader == nil,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
-					WithoutDefaultSecretValues: opts.ChartLoadOpts.NoDefaultSecretValues,
+					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
 				return nil, fmt.Errorf("error decoding secrets: %w", err)
@@ -265,7 +265,7 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 					LoadFromLocalFilesystem:    true,
 					NoDecryptSecrets:           opts.ChartLoadOpts.NoDecryptSecrets,
 					SecretsWorkingDir:          opts.ChartLoadOpts.SecretsWorkingDir,
-					WithoutDefaultSecretValues: opts.ChartLoadOpts.NoDefaultSecretValues,
+					WithoutDefaultSecretValues: opts.ChartLoadOpts.DefaultSecretValuesDisable,
 				},
 			); err != nil {
 				return nil, fmt.Errorf("error decoding secrets: %w", err)

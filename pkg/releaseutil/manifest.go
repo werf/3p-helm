@@ -19,8 +19,11 @@ package releaseutil
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 // SimpleHead defines what the structure of the head of a manifest file
@@ -86,3 +89,14 @@ func (a BySplitManifestsOrder) Less(i, j int) bool {
 	return anum < bnum
 }
 func (a BySplitManifestsOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+func SplitManifestsToSlice(manifests string) []string {
+	splitManifests := SplitManifests(manifests)
+
+	keys := lo.Keys(splitManifests)
+	sort.Strings(keys)
+
+	return lo.Map(keys, func(k string, _ int) string {
+		return splitManifests[k]
+	})
+}

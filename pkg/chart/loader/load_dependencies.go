@@ -23,8 +23,6 @@ import (
 	"github.com/werf/common-go/pkg/locker"
 	"github.com/werf/common-go/pkg/util"
 	"github.com/werf/lockgate"
-	"github.com/werf/logboek"
-	"github.com/werf/logboek/pkg/types"
 )
 
 var localCacheDir string
@@ -123,7 +121,8 @@ func LoadChartDependencies(
 
 	if chartMetadataLock == nil {
 		if len(chartMetadata.Dependencies) > 0 && NoChartLockWarning != "" {
-			logboek.Context(ctx).Warn().LogLn(NoChartLockWarning)
+			// TODO(v2): move logger to common-go and use it
+			fmt.Println(NoChartLockWarning)
 		}
 
 		return res, nil
@@ -175,7 +174,6 @@ func LoadChartDependencies(
 			f1 := new(file.ChartExtenderBufferedFile)
 			*f1 = file.ChartExtenderBufferedFile(*f)
 			res = append(res, f1)
-			logboek.Context(ctx).Debug().LogF("-- LoadChartDependencies: loading subchart %q from the dependencies dir %q\n", f.Name, depsDir)
 		}
 	}
 
@@ -200,7 +198,7 @@ func getChartDependenciesLocksDir() (string, error) {
 	return filepath.Join(svcDir, "locks"), nil
 }
 
-func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockBytes []byte, prepareFunc func(tmpDepsDir string) error, logger types.ManagerInterface) (string, error) {
+func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockBytes []byte, prepareFunc func(tmpDepsDir string) error) (string, error) {
 	chartDependenciesCacheDir, err := getChartDependenciesCacheDir()
 	if err != nil {
 		return "", fmt.Errorf("get chart dependencies cache dir: %w", err)
@@ -221,8 +219,7 @@ func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockByte
 	_, err = os.Stat(depsDir)
 	switch {
 	case os.IsNotExist(err):
-		if err := logger.LogProcess("Preparing chart dependencies").DoError(func() error {
-			logger.LogF("Using chart dependencies directory: %s\n", depsDir)
+		if err := func() error {
 			_, lock, err := hostLocker.AcquireLock(ctx, depsDir, lockgate.AcquireOptions{})
 			if err != nil {
 				return fmt.Errorf("error acquiring lock for %q: %w", depsDir, err)
@@ -252,13 +249,11 @@ func prepareDependenciesDir(ctx context.Context, metadataBytes, metadataLockByte
 				return fmt.Errorf("error renaming %q to %q: %w", tmpDepsDir, depsDir, err)
 			}
 			return nil
-		}); err != nil {
+		}(); err != nil {
 			return "", err
 		}
 	case err != nil:
 		return "", fmt.Errorf("error accessing %q: %w", depsDir, err)
-	default:
-		logger.LogF("Using cached chart dependencies directory: %s\n", depsDir)
 	}
 
 	return depsDir, nil
@@ -294,7 +289,7 @@ func getPreparedChartDependenciesDir(ctx context.Context, metadataFile, metadata
 			return fmt.Errorf("error building chart dependencies: %w", err)
 		}
 		return nil
-	}, logboek.Context(ctx).Default())
+	})
 }
 
 type chartDependenciesConfiguration struct {
@@ -429,8 +424,6 @@ func makeDependencyArchiveName(depName, depVersion string) string {
 }
 
 func buildChartDependenciesInDir(ctx context.Context, targetDir string, opts helmopts.HelmOptions) error {
-	logboek.Context(ctx).Debug().LogF("-- BuildChartDependenciesInDir\n")
-
 	opts.ChartLoadOpts.ChartType = helmopts.ChartTypeChartStub
 	opts.ChartLoadOpts.DepDownloader.SetChartPath(targetDir)
 

@@ -299,10 +299,6 @@ func getResource(info *resource.Info) (runtime.Object, error) {
 
 // Wait waits up to the given timeout for the specified resources to be ready.
 func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
-	if c.ResourcesWaiter != nil {
-		return c.ResourcesWaiter.Wait(context.Background(), resources, timeout)
-	}
-
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
@@ -318,10 +314,6 @@ func (c *Client) Wait(resources ResourceList, timeout time.Duration) error {
 
 // WaitWithJobs wait up to the given timeout for the specified resources to be ready, including jobs.
 func (c *Client) WaitWithJobs(resources ResourceList, timeout time.Duration) error {
-	if c.ResourcesWaiter != nil {
-		return c.ResourcesWaiter.Wait(context.Background(), resources, timeout)
-	}
-
 	cs, err := c.getKubeClient()
 	if err != nil {
 		return err
@@ -618,10 +610,6 @@ func (c *Client) watchTimeout(t time.Duration) func(*resource.Info) error {
 //
 // Handling for other kinds will be added as necessary.
 func (c *Client) WatchUntilReady(resources ResourceList, timeout time.Duration) error {
-	if c.ResourcesWaiter != nil {
-		return c.ResourcesWaiter.WatchUntilReady(context.Background(), resources, timeout)
-	}
-
 	// For jobs, there's also the option to do poll c.Jobs(namespace).Get():
 	// https://github.com/adamreese/kubernetes/blob/master/test/e2e/job.go#L291-L300
 	return perform(resources, c.watchTimeout(timeout))

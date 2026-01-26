@@ -53,6 +53,10 @@ type Chart struct {
 	// Files are miscellaneous files in a chart archive,
 	// e.g. README, LICENSE, etc.
 	Files []*File `json:"files"`
+	// Files that are used at runtime, but should not be saved to secret/configmap.
+	RuntimeFiles []*File `json:"-"`
+	// Dependencies for RuntimeFiles that are used at runtime, but should not be saved to secret/configmap and not added to packaged chart.
+	RuntimeDepsFiles []*File `json:"-"`
 
 	parent       *Chart
 	dependencies []*Chart

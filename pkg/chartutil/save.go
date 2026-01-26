@@ -91,8 +91,8 @@ func SaveIntoDir(c *chart.Chart, dest string) error {
 		}
 	}
 
-	// Save templates and files
-	for _, o := range [][]*chart.File{c.Templates, c.Files} {
+	// Save templates, files, and runtime files (e.g., ts/ for TypeScript charts)
+	for _, o := range [][]*chart.File{c.Templates, c.Files, c.RuntimeFiles} {
 		for _, f := range o {
 			n := filepath.Join(outdir, f.Name)
 			if err := writeFile(n, f.Data); err != nil {
@@ -237,6 +237,14 @@ func writeTarContents(out *tar.Writer, c *chart.Chart, prefix string) error {
 
 	// Save files
 	for _, f := range c.Files {
+		n := filepath.Join(base, f.Name)
+		if err := writeToTar(out, n, f.Data); err != nil {
+			return err
+		}
+	}
+
+	// Save runtime files (e.g., ts/ directory for TypeScript charts)
+	for _, f := range c.RuntimeFiles {
 		n := filepath.Join(base, f.Name)
 		if err := writeToTar(out, n, f.Data); err != nil {
 			return err

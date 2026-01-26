@@ -173,6 +173,10 @@ func LoadFiles(files []*BufferedFile, opts helmopts.HelmOptions) (*chart.Chart, 
 			fname := strings.TrimPrefix(f.Name, "charts/")
 			cname := strings.SplitN(fname, "/", 2)[0]
 			subcharts[cname] = append(subcharts[cname], &BufferedFile{Name: fname, Data: f.Data})
+		case strings.HasPrefix(f.Name, "ts/node_modules/"):
+			c.RuntimeDepsFiles = append(c.RuntimeDepsFiles, &chart.File{Name: f.Name, Data: f.Data})
+		case strings.HasPrefix(f.Name, "ts/"):
+			c.RuntimeFiles = append(c.RuntimeFiles, &chart.File{Name: f.Name, Data: f.Data})
 		default:
 			c.Files = append(c.Files, &chart.File{Name: f.Name, Data: f.Data})
 		}

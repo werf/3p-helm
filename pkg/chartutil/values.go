@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"sigs.k8s.io/yaml"
 
 	"github.com/werf/3p-helm/pkg/chart"
@@ -135,10 +136,11 @@ type ReleaseOptions struct {
 // ToRenderValues composes the struct from the data coming from the Releases, Charts and Values files
 //
 // This takes both ReleaseOptions and Capabilities to merge into the render values.
-func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities, runtime map[string]interface{}) (Values, error) {
+func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options ReleaseOptions, caps *Capabilities, runtime, defaultRootContext map[string]interface{}) (Values, error) {
 	if caps == nil {
 		caps = DefaultCapabilities
 	}
+
 	top := map[string]interface{}{
 		"Chart":        chrt.Metadata,
 		"Capabilities": caps,
@@ -152,6 +154,8 @@ func ToRenderValues(chrt *chart.Chart, chrtVals map[string]interface{}, options 
 		},
 		"Runtime": runtime,
 	}
+
+	top = lo.Assign(defaultRootContext, top)
 
 	vals, err := CoalesceValues(chrt, chrtVals)
 	if err != nil {

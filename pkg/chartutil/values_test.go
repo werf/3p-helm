@@ -103,7 +103,7 @@ func TestToRenderValues(t *testing.T) {
 		IsInstall: true,
 	}
 
-	res, err := ToRenderValues(c, overrideValues, o, nil)
+	res, err := ToRenderValues(c, overrideValues, o, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

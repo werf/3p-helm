@@ -121,7 +121,7 @@ func LoadChartDependencies(
 
 	if chartMetadataLock == nil {
 		if len(chartMetadata.Dependencies) > 0 && NoChartLockWarning != "" {
-			// TODO(v2): move logger to common-go and use it
+			// TODO(major): move logger to common-go and use it
 			fmt.Println(NoChartLockWarning)
 		}
 

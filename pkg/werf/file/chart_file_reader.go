@@ -11,5 +11,5 @@ type ChartFileReaderInterface interface {
 	ChartIsDir(relPath string) (bool, error)
 }
 
-// TODO(ilya-lesikov): keep it global, but separate package? Make non-giterminism default implementation
+// TODO(werf): keep it global, but separate package? Make non-giterminism default implementation
 var ChartFileReader ChartFileReaderInterface

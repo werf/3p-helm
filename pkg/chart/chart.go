@@ -176,6 +176,17 @@ func (ch *Chart) CRDObjects() []CRD {
 	return crds
 }
 
+func (ch *Chart) AddRuntimeFile(name string, data []byte) {
+	ch.Raw = append(ch.Raw, &File{Name: name, Data: data})
+
+	ch.RuntimeFiles = append(ch.RuntimeFiles, &File{name, data})
+	if !ch.IsRoot() {
+		root := ch.Root()
+		rawName := filepath.Join(strings.TrimPrefix(ch.ChartFullPath(), root.Name()+"/"), name)
+		root.Raw = append(root.Raw, &File{Name: rawName, Data: data})
+	}
+}
+
 func hasManifestExtension(fname string) bool {
 	ext := filepath.Ext(fname)
 	return strings.EqualFold(ext, ".yaml") || strings.EqualFold(ext, ".yml") || strings.EqualFold(ext, ".json")

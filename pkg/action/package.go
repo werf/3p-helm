@@ -18,6 +18,7 @@ package action
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"syscall"
@@ -30,6 +31,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/provenance"
 	"github.com/werf/3p-helm/pkg/werf/helmopts"
+	tsbundle "github.com/werf/3p-helm/pkg/werf/ts"
 )
 
 // Package is the action for packaging a chart.
@@ -59,6 +61,12 @@ func (p *Package) Run(path string, _ map[string]interface{}, opts helmopts.HelmO
 	ch, err := loader.LoadDir(path, opts)
 	if err != nil {
 		return "", err
+	}
+
+	if tsbundle.BundleEnabled {
+		if err := tsbundle.ProcessChartRecursive(context.Background(), ch, path, true); err != nil {
+			return "", errors.Wrap(err, "unable to process TypeScript files in chart")
+		}
 	}
 
 	// If version is set, modify the version.
@@ -137,7 +145,7 @@ func (p *Package) Clearsign(filename string, opts helmopts.HelmOptions) error {
 		return err
 	}
 
-	return os.WriteFile(filename+".prov", []byte(sig), 0644)
+	return os.WriteFile(filename+".prov", []byte(sig), 0o644)
 }
 
 // promptUser implements provenance.PassphraseFetcher

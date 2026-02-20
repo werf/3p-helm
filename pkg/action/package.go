@@ -64,7 +64,7 @@ func (p *Package) Run(path string, _ map[string]interface{}, opts helmopts.HelmO
 	}
 
 	if tsbundle.BundleEnabled {
-		if err := tsbundle.ProcessChartRecursive(context.Background(), ch, path, true); err != nil {
+		if err := tsbundle.BundleTSChartsRecursive(context.Background(), ch, path, true); err != nil {
 			return "", errors.Wrap(err, "unable to process TypeScript files in chart")
 		}
 	}

@@ -56,7 +56,7 @@ func RunDenoBundle(ctx context.Context, chartPath, entryPoint string) ([]uint8, 
 	return output, nil
 }
 
-func ProcessChartRecursive(ctx context.Context, chart *helmchart.Chart, path string, rebuild bool) error {
+func BundleTSChartsRecursive(ctx context.Context, chart *helmchart.Chart, path string, rebuild bool) error {
 	entrypoint, bundle := GetEntrypointAndBundle(chart.RuntimeFiles)
 	if entrypoint == "" {
 		return nil
@@ -68,8 +68,11 @@ func ProcessChartRecursive(ctx context.Context, chart *helmchart.Chart, path str
 			return fmt.Errorf("build TypeScript bundle: %w", err)
 		}
 
-		bundle = bundleRes
-		chart.AddRuntimeFile(ChartTSBundleFile, bundle)
+		if rebuild && bundle != nil {
+			chart.RemoveRuntimeFile(ChartTSBundleFile)
+		}
+
+		chart.AddRuntimeFile(ChartTSBundleFile, bundleRes)
 	}
 
 	deps := chart.Dependencies()
@@ -79,7 +82,14 @@ func ProcessChartRecursive(ctx context.Context, chart *helmchart.Chart, path str
 
 	for _, dep := range deps {
 		depPath := filepath.Join(path, "charts", dep.Name())
-		if err := ProcessChartRecursive(ctx, dep, depPath, rebuild); err != nil {
+
+		if _, err := os.Stat(depPath); err != nil {
+			// Subchart loaded from .tgz or missing on disk — skip,
+			// deno bundle needs a real directory to work with.
+			continue
+		}
+
+		if err := BundleTSChartsRecursive(ctx, dep, depPath, rebuild); err != nil {
 			return fmt.Errorf("process dependency %q: %w", dep.Name(), err)
 		}
 	}
@@ -87,7 +97,7 @@ func ProcessChartRecursive(ctx context.Context, chart *helmchart.Chart, path str
 	return nil
 }
 
-func GetEntrypointAndBundle(files []*helmchart.File) (string, []byte) {
+func GetEntrypointAndBundle(files []*helmchart.File) (string, *helmchart.File) {
 	entrypoint := findEntrypointInFiles(files)
 	if entrypoint == "" {
 		return "", nil
@@ -101,7 +111,7 @@ func GetEntrypointAndBundle(files []*helmchart.File) (string, []byte) {
 		return entrypoint, nil
 	}
 
-	return entrypoint, bundleFile.Data
+	return entrypoint, bundleFile
 }
 
 func findEntrypointInFiles(files []*helmchart.File) string {

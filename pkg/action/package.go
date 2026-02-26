@@ -31,7 +31,7 @@ import (
 	"github.com/werf/3p-helm/pkg/chartutil"
 	"github.com/werf/3p-helm/pkg/provenance"
 	"github.com/werf/3p-helm/pkg/werf/helmopts"
-	tsbundle "github.com/werf/3p-helm/pkg/werf/ts"
+	"github.com/werf/3p-helm/pkg/werf/ts"
 )
 
 // Package is the action for packaging a chart.
@@ -63,8 +63,8 @@ func (p *Package) Run(path string, _ map[string]interface{}, opts helmopts.HelmO
 		return "", err
 	}
 
-	if tsbundle.BundleEnabled {
-		if err := tsbundle.BundleTSChartsRecursive(context.Background(), ch, path, true); err != nil {
+	if tsruntime.TSRuntime != nil {
+		if err := tsruntime.TSRuntime.BundleChartsRecursive(context.Background(), ch, path); err != nil {
 			return "", errors.Wrap(err, "unable to process TypeScript files in chart")
 		}
 	}

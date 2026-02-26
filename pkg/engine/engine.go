@@ -29,6 +29,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"k8s.io/client-go/rest"
 
 	"github.com/werf/3p-helm/pkg/chart"
@@ -80,7 +81,7 @@ func New(config *rest.Config) Engine {
 // section contains a value named "bar", that value will be passed on to the
 // bar chart during render time.
 func (e Engine) Render(chrt *chart.Chart, values chartutil.Values, opts helmopts.HelmOptions) (map[string]string, error) {
-	tmap := allTemplates(chrt, values)
+	tmap := allTemplates(chrt, values, opts)
 	return e.render(tmap, chrt.SecretsRuntimeData, opts)
 }
 
@@ -433,9 +434,9 @@ func (p byPathLen) Less(i, j int) bool {
 // allTemplates returns all templates for a chart and its dependencies.
 //
 // As it goes, it also prepares the values in a scope-sensitive manner.
-func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
+func allTemplates(c *chart.Chart, vals chartutil.Values, opts helmopts.HelmOptions) map[string]renderable {
 	templates := make(map[string]renderable)
-	recAllTpls(c, templates, vals)
+	recAllTpls(c, templates, vals, opts)
 	return templates
 }
 
@@ -443,7 +444,7 @@ func allTemplates(c *chart.Chart, vals chartutil.Values) map[string]renderable {
 //
 // As it recurses, it also sets the values to be appropriate for the template
 // scope.
-func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values) map[string]interface{} {
+func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.Values, opts helmopts.HelmOptions) map[string]interface{} {
 	subCharts := make(map[string]interface{})
 	chartMetaData := struct {
 		chart.Metadata
@@ -460,6 +461,8 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 		"Runtime":      vals["Runtime"],
 	}
 
+	next = lo.Assign(opts.ChartLoadOpts.DefaultRootContext, next)
+
 	// If there is a {{.Values.ThisChart}} in the parent metadata,
 	// copy that into the {{.Values}} for this template.
 	if c.IsRoot() {
@@ -469,7 +472,7 @@ func recAllTpls(c *chart.Chart, templates map[string]renderable, vals chartutil.
 	}
 
 	for _, child := range c.Dependencies() {
-		subCharts[child.Name()] = recAllTpls(child, templates, next)
+		subCharts[child.Name()] = recAllTpls(child, templates, next, opts)
 	}
 
 	newParentID := c.ChartFullPath()

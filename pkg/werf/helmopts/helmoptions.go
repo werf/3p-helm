@@ -18,6 +18,7 @@ type ChartLoadOptions struct {
 	SecretKeyIgnore            bool
 	SecretValuesFiles          []string
 	SecretWorkDir              string
+	DefaultRootContext         map[string]interface{}
 }
 
 type ChartType string

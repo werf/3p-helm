@@ -28,17 +28,20 @@ const (
 // ChartTSEntryPoints defines supported TypeScript/JavaScript entry points (in priority order).
 var ChartTSEntryPoints = [...]string{ChartTSEntryPointTS, ChartTSEntryPointJS}
 
-var BundleEnabled = false
+var (
+	BundleEnabled = false
+	denoBinary    = ""
+)
 
 func GetDenoBinary() string {
-	if denoBin, ok := os.LookupEnv("DENO_BIN"); ok && denoBin != "" {
-		return denoBin
-	}
-
-	return "deno"
+	return denoBinary
 }
 
-func RunDenoBundle(ctx context.Context, chartPath, entryPoint string) ([]uint8, error) {
+func SetDenoBinary(path string) {
+	denoBinary = path
+}
+
+func runDenoBundle(ctx context.Context, chartPath, entryPoint string) ([]uint8, error) {
 	denoBin := GetDenoBinary()
 	cmd := exec.CommandContext(ctx, denoBin, "bundle", entryPoint)
 	cmd.Dir = filepath.Join(chartPath, ChartTSSourceDir)
@@ -63,7 +66,7 @@ func BundleTSChartsRecursive(ctx context.Context, chart *helmchart.Chart, path s
 	}
 
 	if bundle == nil || rebuild {
-		bundleRes, err := RunDenoBundle(ctx, path, entrypoint)
+		bundleRes, err := runDenoBundle(ctx, path, entrypoint)
 		if err != nil {
 			return fmt.Errorf("build TypeScript bundle: %w", err)
 		}

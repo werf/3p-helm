@@ -1,4 +1,4 @@
-package tsruntime
+package ts
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	helmchart "github.com/werf/3p-helm/pkg/chart"
 )
 
-type RuntimeInterface interface {
+type Bundler interface {
 	BundleChartsRecursive(ctx context.Context, chart *helmchart.Chart, path string) error
 }
 
-var TSRuntime RuntimeInterface
+var DefaultBundler Bundler
